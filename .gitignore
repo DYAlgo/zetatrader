@@ -1,0 +1,5 @@
+**.vscode
+**zetatrader.egg-info
+**__pycache__
+**/dataframework/credentials.py 
+
