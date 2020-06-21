@@ -10,7 +10,7 @@ import numpy as np
 import datetime as dt
 import requests
 import time
-from credentials import tiingo_api_key
+from dataframework.credentials import tiingo_api_key
 
 class Tiingo:
 	"""
@@ -46,11 +46,14 @@ class Tiingo:
 			'&token=') %(ticker, start_date, end_date, 
 			time_frame)
 		my_request = requests.get(str(url+self.key)).content
-		csv_data = pd.read_csv(io.StringIO(my_request.decode('utf-8')))  
-		csv_data = csv_data[['date', 'open', 'high', 'low', 'close', 'adjClose'
-			, 'volume', 'divCash', 'splitFactor']]
-		csv_data['date'] = csv_data['date'].astype('datetime64[ns]') 
-		return csv_data
+		csv_data = pd.read_csv(io.StringIO(my_request.decode('utf-8'))) 
+		if csv_data.empty==True:
+			return csv_data
+		else: 
+			csv_data = csv_data[['date', 'open', 'high', 'low', 'close', 'adjClose'
+				, 'volume', 'divCash', 'splitFactor']]
+			csv_data['date'] = csv_data['date'].astype('datetime64[ns]') 
+			return csv_data
         
     
 	def get_all_data(self, ticker, time_frame = 'daily'):
@@ -67,10 +70,13 @@ class Tiingo:
 		
 		my_request = requests.get(str(url+self.key)).content  
 		csv_data = pd.read_csv(io.StringIO(my_request.decode('utf-8')))
-		csv_data = csv_data[['date', 'open', 'high', 'low', 'close', 'adjClose'
-			, 'volume', 'divCash', 'splitFactor']] 
-		csv_data['date'] = csv_data['date'].astype('datetime64[ns]') 
-		return csv_data		  
+		if csv_data.empty==True:
+			return csv_data
+		else:
+			csv_data = csv_data[['date', 'open', 'high', 'low', 'close', 'adjClose'
+				, 'volume', 'divCash', 'splitFactor']] 
+			csv_data['date'] = csv_data['date'].astype('datetime64[ns]') 
+			return csv_data		  
 
 
 
@@ -82,5 +88,6 @@ if __name__ == "__main__":
 	print(t.get_all_data("MMM").loc[0, 'date'])
 	print(type( t.get_all_data("MMM").loc[0, 'date'] ))
 	print( t.get_all_data("MMM").loc[0, 'date'].to_pydatetime() )
+	print( t.get_all_data('BOBBY', 'daily'))
 	
 
