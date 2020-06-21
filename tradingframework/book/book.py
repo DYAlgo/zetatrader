@@ -145,9 +145,10 @@ class Book(AbstractBook):
                     )
                     self.current_holdings['cash'] += cash_dividend
                     dh['cash'] += cash_dividend
+                    dh['total'] += cash_dividend
 
                     if self.current_positions[s] > 0:
-                        print('%s issues: %s dividends' %(s,
+                        print('%s issues: %s of total dividends' %(s,
                                 self.bars.get_latest_bar_dividend(s)
                                 *
                                 self.current_positions[s]
@@ -204,6 +205,7 @@ class Book(AbstractBook):
         self.current_holdings[fill.symbol] += cost
         self.current_holdings['commission'] += fill.commission
         self.current_holdings['cash'] -= (cost + fill.commission)
+        # Take cost amount out from total and add new mv on next bar
         self.current_holdings['total'] -= (cost + fill.commission)     
 
         print(

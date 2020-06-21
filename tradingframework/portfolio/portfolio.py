@@ -46,6 +46,8 @@ class Portfolio:
     
         self.construct_portfolio()
 
+    def __str__(self):
+        return "Default Portfolio Class"
 
     def construct_portfolio(self):
         """Initialize the 4 key components of a portfolio - the book

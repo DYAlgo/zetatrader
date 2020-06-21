@@ -17,9 +17,13 @@ class MoneyManagement:
         Arguments:
             book {obj} -- Book object. 
         """
-        self.book = book
+        self.book=book
+        self.bars=self.book.bars
         self.money_management_dict = {
             0: self.generate_naive_order
+            , 1: self.generate_naive_order_stackable
+            , 2: self.generate_dollar_amount_order
+            , 3: self.generate_dollar_amount_order_stackable
         }
         
 
@@ -69,5 +73,80 @@ class MoneyManagement:
         if direction == 'EXIT' and cur_quantity < 0:
             order = OrderEvent(symbol, order_type, abs(cur_quantity), 'BUY')
         return order        
-
     
+    def generate_naive_order_stackable(self, signal):
+        """Returns an order event to buy/sell the given the rounded 
+        number of units represented by the signal strength. This is not 
+        limited to only one position. So if we are already long symbol x,
+        we will still go long again if we recieve another signal to buy
+        symbol x
+        """
+        order = None
+
+        symbol = signal.symbol
+        direction = signal.signal_type
+        mkt_quantity = signal.strength
+        cur_quantity = self.book.current_positions[symbol]
+        order_type = 'MKT'
+
+        if direction == 'LONG':
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
+        if direction == 'SHORT':
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')   
+    
+        if direction == 'EXIT' and cur_quantity > 0:
+            order = OrderEvent(symbol, order_type, abs(cur_quantity), 'SELL')
+        if direction == 'EXIT' and cur_quantity < 0:
+            order = OrderEvent(symbol, order_type, abs(cur_quantity), 'BUY')
+        return order
+
+    def generate_dollar_amount_order(self, signal):
+        """Generates a order that buys an equivalent of a fixed amount 
+        determined by the strength of the signal. Strength of 1 = 1 dollar. It
+        will not return an order if we already have a position for the given 
+        symbol.
+        
+        Arguments:
+            signal {[type]} -- Signal event
+        """
+        order = None
+        
+
+        symbol = signal.symbol
+        last_price = self.bars.get_latest_bar_value(symbol, "close_price")
+        direction = signal.signal_type
+        investment_amt = signal.strength
+        mkt_quantity = investment_amt//last_price
+        cur_quantity = self.book.current_positions[symbol]
+        order_type = 'MKT'
+        
+        if direction == 'LONG' and cur_quantity == 0:
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
+        if direction == 'SHORT' and cur_quantity == 0:
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')  
+        return order
+
+    def generate_dollar_amount_order_stackable(self, signal):
+        """Generates a order that buys an equivalent of a fixed amount 
+        determined by the strength of the signal. Strength of 1 = 1 dollar.
+        If a position is already establish for given symbol, we will still
+        make return an order event for it. 
+        
+        Arguments:
+            signal {[type]} -- Signal event
+        """
+        order = None
+        
+
+        symbol = signal.symbol
+        last_price = self.bars.get_latest_bar_value(symbol, "close_price")
+        direction = signal.signal_type
+        investment_amt = signal.strength
+        mkt_quantity = investment_amt//last_price
+        order_type = 'MKT'
+        
+        if direction == 'LONG':
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
+        if direction == 'SHORT':
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')  
+        return order

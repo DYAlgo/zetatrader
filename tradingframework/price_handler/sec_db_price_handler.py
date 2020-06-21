@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd 
 import datetime as dt
 
-from data_framework.credentials import sec_db_cred
+from dataframework.credentials import sec_db_cred
 from tradingframework.event import MarketEvent
 from tradingframework.price_handler.base import AbstractPriceHandler
 
@@ -19,7 +19,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
     process. This is at least x2 faster then querying Sec_DB per bar. 
     """
     def __init__(self, events, symbol_list, sec_db_pw = sec_db_cred
-        , insample_size_est = 2000
+        , insample_size_est = 0
     ):
         """Initialize Sec_DB_Price_Handler object 
         
@@ -115,7 +115,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
             )
             price_data = pd.read_sql_query(query, con = self.sec_db_conn)
             price_data.set_index("price_date", inplace=True)
-            # Update length comparison and 
+            # If there are additional data, then use this as the full price data
             if len(price_data) > max_len:
                 max_len = len(price_data)
                 most_data_symbol = i
@@ -136,7 +136,10 @@ class SecDbPriceHandler(AbstractPriceHandler):
         
         total_size = len(data[self.symbol_list[0]])
         self.bar_index = total_size - outsample_size -1
-        print(data[self.symbol_list[0]][self.bar_index:self.bar_index+5])
+        if self.bar_index>=0:
+            print(data[self.symbol_list[0]][self.bar_index:self.bar_index+5])
+        else:
+            print(data[self.symbol_list[0]][0:self.bar_index+5])
         return data
 
     def construct_latest_symbol_data(self):
@@ -174,7 +177,12 @@ class SecDbPriceHandler(AbstractPriceHandler):
     
     def get_datetime(self):
         """returns the current datetime in object"""
-        return self.get_latest_bar_datetime(self.symbol_list[0])
+        # If barindex is -1. Just give the date of day before the
+        # start date is
+        if self.bar_index <0:
+            return self.start_date-dt.timedelta(days=1)
+        else:
+            return self.get_latest_bar_datetime(self.symbol_list[0])
 
     # def set_handler_end_date(self, date):
     #     """
@@ -288,7 +296,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
         """
         try:
             bars = self.symbol_data[symbol].loc[
-                self.bar_index +1 - N : self.bar_index, val_type
+                self.bar_index +1 - N : self.bar_index, ['price_date',val_type]
             ]
             # If symbol_data has less than N bars, try pulling data from sec_db
             if len(bars) < N:

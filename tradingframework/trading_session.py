@@ -24,7 +24,7 @@ class TradingSession(object):
         , session_start_dt=None, session_end_dt=None, session_type='backtest' 
         , price_handler=None, execution_handler=None, portfolio=None
         , strategy=None, book=None, money_management=None, risk_manager=None
-        , performance=None, output_path=None
+        , performance=None, output_path=None, strategy_parameters=None
     ):
         """Initialize the class object.
         
@@ -52,6 +52,8 @@ class TradingSession(object):
             risk_manager {class} -- risk manager object (default: {None})
             performance {class} -- performance object (default: {None})
             output_path {str} -- The path to save all outputs (i.e: equity curve)
+            strategy_parameters {dict} -- Dict of parameter variables to parse into 
+                strategy class. Keys in dict are parameter names. 
         """ 
         self.symbol_list = symbol_list
         self.initial_capital = initial_capital
@@ -70,6 +72,7 @@ class TradingSession(object):
         self.risk_manager = risk_manager
         self.performance = performance
         self.output_path = output_path
+        self.strategy_parameters = strategy_parameters
 
         self.signals = 0
         self.orders = 0
@@ -80,7 +83,8 @@ class TradingSession(object):
     def _generate_trading_instances(self):
         """
         Generates the trading instance objects from 
-        their class types.
+        their class types. It must follow the sequence 
+        starting from initializing price handler to execution handler
         """
         # Initialize price_handler class
         if self.session_type == 'backtest':
@@ -99,10 +103,18 @@ class TradingSession(object):
                 + 'No price handler initialize.'
             )
             
-
-        # Initialize strategy class
-        self.strategy = self.strategy(self.price_handler, self.events)
-
+        # Initialize strategy class based on whether is is parameterless or not
+        if self.strategy_parameters==None:
+            self.strategy = self.strategy(self.price_handler, self.events) 
+        else:
+            try:
+                if type(self.strategy_parameters)==dict:
+                    self.strategy = self.strategy(
+                        self.price_handler, self.events, **self.strategy_parameters
+                    )
+            except:
+                raise ValueError("Incorrect strategy parameter variable given.")
+        
         # Initialize Performance Class
         self.performance = self.performance(self.output_path)
 
