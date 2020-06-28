@@ -8,7 +8,7 @@ from dataframework.sec_db.secdb_conn import SecDbConn
 from dataframework.tiingo import Tiingo
 from dataframework.sec_db.sec_db_data_handler import SecDbDataHandler
 
-class DailyPriceUpdateHandler(SecDbConn):
+class DailyPriceTableHandler(SecDbConn):
     """daily drice table update handler class 
     """
     def __init__(self, secdb_handler=None, tiingo_handler=None):
@@ -24,7 +24,7 @@ class DailyPriceUpdateHandler(SecDbConn):
             starting_id {int} -- symbol id to start finding updates 
                 (default: {0})
         """
-        super(DailyPriceUpdateHandler, self).__init__()
+        super(DailyPriceTableHandler, self).__init__()
         self.secdb_handler=secdb_handler
         self.tiingo_handler=tiingo_handler
 
@@ -261,7 +261,7 @@ class DailyPriceUpdateHandler(SecDbConn):
                                 print("%s data added" %ticker)
                                 print("%s rows affected in daily_price" %r)
                                 print("%s rows affected in daily_corp_action" %s)
-                                print("%s rows affected in symbol" %t)
+                                print("%s rows affected in symbol. Should be 0" %t)
                             super().close_connection()
                             new_update=True
                         except self.conn.Error as error:
@@ -292,15 +292,45 @@ class DailyPriceUpdateHandler(SecDbConn):
             source {[str]} -- Data vendor name (default: {None})
         """
         if source=='Tiingo':
-            # Get list of nasdaq securities
-            pass
+            # Get exchange id for nasdaq
+            nasdaq_id=self.secdb_handler.get_exchange_id("NASDAQ")
 
+            # Get list of nasdaq securities as symbol id
+            symbol_list=self.secdb_handler.get_symbol_id_by_exchange_id(
+                nasdaq_id, True
+            )
+            
             # Pass that list of securities into the price updater
+            self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
         else:
             print('No %s source function found' %source)
 
+    def update_nyse_daily_price(self, source=None):
+        """Obtain a list of NYSE symbol ids and update daily price data for those 
+        symbols by calling update_daily_price_from_x.  
+
+        Args:
+            source ([str], optional): [Data Vendor name]. Defaults to None.
+        """
+        if source=='Tiingo':
+            # Get exchange id for NYSE
+            nyse_id=self.secdb_handler.get_exchange_id('NYSE')
+
+            # Get list of nyse symbol id 
+            symbol_list=self.secdb_handler.get_symbol_id_by_exchange_id(
+                nyse_id, True
+            )
+            
+            # Pass the list of nyse securities list 
+            self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
+        else:
+            print('No %s source function found' %source)
+        
 
 if __name__ == "__main__":
     # Try updating 3m data 
-    ud=DailyPriceUpdateHandler(SecDbDataHandler, Tiingo)
-    ud.update_daily_price_from_tiingo([312],1)
+    ud=DailyPriceTableHandler(SecDbDataHandler, Tiingo)
+    # ud.update_daily_price_from_tiingo([312],1)
+    #samplelist=[6897]
+    # ud.update_daily_price_from_tiingo(samplelist, len(samplelist))
+    # ud.update_nasdaq_daily_price('Tiingo')
