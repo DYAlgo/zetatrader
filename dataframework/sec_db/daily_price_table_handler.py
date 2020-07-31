@@ -303,7 +303,7 @@ class DailyPriceTableHandler(SecDbConn):
             # Pass that list of securities into the price updater
             self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
         else:
-            print('No %s source function found' %source)
+            print('%s source function not available' %source)
 
     def update_nyse_daily_price(self, source=None):
         """Obtain a list of NYSE symbol ids and update daily price data for those 
@@ -324,7 +324,71 @@ class DailyPriceTableHandler(SecDbConn):
             # Pass the list of nyse securities list 
             self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
         else:
-            print('No %s source function found' %source)
+            print('%s source function not available' %source)
+
+    def update_amex_daily_price(self, source=None):
+        """Update the daily price for AMEX traded securities. Uses 
+        symbol ids from symbol table and update_daily_price_from_x 
+        function. 
+
+        Args:
+            source ([str], optional): source name. Defaults to None.
+        """
+        if source=='Tiingo':
+            # Get exchange id for AMEX
+            amex_id=self.secdb_handler.get_exchange_id('AMEX')
+
+            # Get list of amex symbol id
+            symbol_list=self.secdb_handler.get_symbol_id_by_exchange_id(
+                amex_id, True
+            ) 
+
+            # Pass symbol id list into update function
+            self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
+        else:
+            print('%s source function not available'%source)
+
+    def update_arca_daily_price(self, source=None):
+        """Update the daily price of ARCA ETFs using the 
+        update_daily_price_from_x function. 
+
+        Args:
+            source ([str], optional): Name of data source. Defaults to None.
+        """
+        if source=='Tiingo':
+            # Get exchange id for ARCA
+            arca_id=self.secdb_handler.get_exchange_id('NYSE ARCA')
+
+            # Get list of arca symbol id 
+            symbol_list=self.secdb_handler.get_symbol_id_by_exchange_id(
+                arca_id, True
+            )
+
+            # Pass the symbol list into update function 
+            self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
+        else:
+            print('%s source function not available'%source)
+    
+    def update_bzx_daily_price(self, source=None):
+        """Obtain a list of BZX Exchange symbol ids and update their daily
+        price using the update_daily_price_from_x function. 
+
+        Args:
+            source ([str], optional): Tiingo, etc... Defaults to None.
+        """
+        if source=='Tiingo':
+            # Get exchange id for BZX
+            bzx_id=self.secdb_handler.get_exchange_id('CBOE BZX')
+
+            # Get list of amex symbol id 
+            symbol_list=self.secdb_handler.get_symbol_id_by_exchange_id(
+                bzx_id, True
+            )
+
+            # Pass symbol id list into update function
+            self.update_daily_price_from_tiingo(symbol_list, len(symbol_list))
+        else:
+            print('%s source function not available'%source)
         
 
 if __name__ == "__main__":

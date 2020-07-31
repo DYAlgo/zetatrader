@@ -17,7 +17,7 @@ class SecDbConn:
         print("SecDbConn object created.")
 
     def open_connection(self):
-        """Connect to the Dummie Database
+        """Connect to the Sec_DB Database
         """
         try:
             if self.conn is None:

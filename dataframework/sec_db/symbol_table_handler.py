@@ -83,6 +83,31 @@ class SymbolTableHandler(SecDbConn):
 
         return etf_list
 
+    def get_bzx_symbols(self):
+        """Return the symbols from BZX exchange(previously BATS). The list
+        is pulled directly from CBOE BZX Exchange webpage.  
+
+        Returns:
+            [type]: [description]
+        """
+        today=dt.datetime.now()
+        year=today.year
+        month=today.month if len(str(today.month))>1 else '0'+str(today.month) 
+        day=today.day-1 if len(str(today.day-1))>1 else '0'+str(today.day-1) 
+
+        url=(
+            'https://markets.cboe.com/us/equities/market_statistics/'+
+            'listed_securities/'+str(year)+'/'+str(month)+
+            '/bzx_equities_listed_security_rpt_'+
+            str(year)+str(month)+str(day)+'.txt-dl?mkt=bzx'
+        )
+
+        print(url)
+        request=urllib.request.urlopen(url)
+        etf_list = pd.read_csv(request, sep = '|', skiprows=1)
+
+        return etf_list
+
 
     # -------------------------------------------------------------------------
     # -Section below contains functions that are required by obj to function---
@@ -394,6 +419,75 @@ class SymbolTableHandler(SecDbConn):
             print('Unable to insert ARCA ETF symbol data to sec_db')
             super().close_connection()
 
+    def update_bzx_exchange_symbols(self):
+        """Pulls in the latest list of ETPs traded on the 
+        BZX Exchange and update it into the sec_db symbol table.
+        Symbols already in symbol table will be skipped.
+        """
+        bzx_abbrv='CBOE BZX'
+        exchange_id=self.secdb_handler.get_exchange_id(bzx_abbrv)
+        symbol_list=self.get_bzx_symbols()
+
+        # Varify list is in our intended format
+        if 'Symbol'==str(symbol_list.columns[0]):
+            pass
+        else:
+            raise('Symbol column not found')
+
+        if 'Issue Name'==str(symbol_list.columns[1]):
+            pass
+        else:
+            raise('Issue Name column not found')
+
+        if 'Currency'==str(symbol_list.columns[3]):
+            pass
+        else:
+            raise('Currency column not found')
+
+        rows_to_add=[]
+
+        for row in symbol_list.itertuples():
+            ticker=row[1]
+            fund_name=row[2]
+            currency=row[4]
+            now=dt.datetime.today()
+
+            stock_exist=self.check_if_symbol_exist(str(ticker)
+                , str(fund_name), exchange_id)
+            
+            if stock_exist[0]==False:
+                sector='NA'
+                rows_to_add.append(
+                    (
+                        0, int(exchange_id), str(ticker)
+                        , str('Exchange Traded Funds'), str(fund_name)
+                        , str(sector), str(currency), now, now
+                    )
+                )
+            
+        # SQL Code to add data 
+        add_fields="id, exchange_id, ticker, instrument, name, sector\
+            , currency, created_date, last_updated_date"
+        add_command="""INSERT INTO symbol (%s) VALUES (%s)""" % (add_fields \
+            , ("%s, " * 9)[:-2])
+        
+        try:
+            super().open_connection()
+            with self.conn:
+                cur=self.conn.cursor()
+                r=cur.executemany(add_command, rows_to_add) 
+                self.conn.commit()
+                print("%s new BZX Exchange symbols added" %len(rows_to_add))
+                print('%s rows affected in symbol' %r)
+            super().close_connection()
+        except self.conn.Error as error:
+            code, message = error.args
+            print('Error code: %s' %code)
+            print('>>>>>>> %s' %message)
+            print('Unable to insert BZX Exchange symbol data to sec_db')
+            super().close_connection()
+            
+
     #--------------------------------------------------------------------------
     #-Below contains functions that combines the functions above to automate---
     #-the sec_db symbol update process-----------------------------------------
@@ -417,3 +511,4 @@ if __name__ == '__main__':
     # sym_ctrl.update_major_us_exchange_symbols()
     # sym_ctrl.update_arca_etf_symbols()
     print(sym_ctrl.check_if_symbol_exist("MMM", "3M Company", 3))
+    # sym_ctrl.update_bzx_exchange_symbols()
