@@ -63,6 +63,7 @@ class TradingSession(object):
         self.session_start_dt = session_start_dt
         self.session_end_dt = session_end_dt
         self.session_type = session_type
+        self.lotsize=lotsize
         self.events = queue.Queue()
 
         self.price_handler = price_handler
@@ -123,7 +124,7 @@ class TradingSession(object):
         # Initialize Portfolio Class
         self.portfolio = self.portfolio(
             self.initial_capital, self.price_handler, self.events
-            , self.session_type, self.book, self.money_management
+            , self.session_type, self.lotsize, self.book, self.money_management
             , self.risk_manager, self.performance
         )
 

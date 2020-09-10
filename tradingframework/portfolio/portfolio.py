@@ -18,7 +18,7 @@ class Portfolio:
     , 60 min or EOD and ticks. 
     """
     def __init__(self, initial_capital, bars, events, session_type='backtest'
-        ,lotsize=None, book = None, money_management=None, risk_manager=None
+        ,lotsize=None, book=None, money_management=None, risk_manager=None
         , performance=None, 
     ):
         """Initializes portfolio class
