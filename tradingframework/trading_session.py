@@ -22,7 +22,7 @@ class TradingSession(object):
     def __init__(
         self, symbol_list, initial_capital=0.0, heartbeat=0.0
         , session_start_dt=None, session_end_dt=None, session_type='backtest' 
-        , price_handler=None, execution_handler=None, portfolio=None
+        , lotsize=None, price_handler=None, execution_handler=None, portfolio=None
         , strategy=None, book=None, money_management=None, risk_manager=None
         , performance=None, output_path=None, strategy_parameters=None
     ):
@@ -42,6 +42,8 @@ class TradingSession(object):
                 (default: {None})
             session_type {str} --  Use 'backtest' or 'live' to control session 
                 type (default: {'backtest'})
+            lotsize {int} -- The standadize number of incremental units tradable   
+                (default: {None})
             price_handler {class} -- data handler object (default: {None})
             execution_handler {class} -- executionhandler object 
                 (default: {None})

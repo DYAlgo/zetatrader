@@ -3,6 +3,7 @@
 
 # money_management.py
 # Darren Jun Yi Yeap 03/07/2020
+import math
 from tradingframework.event import OrderEvent
 
 
@@ -11,13 +12,14 @@ class MoneyManagement:
     a trade with a given money management method in the context of 
     a portfolio.  
     """
-    def __init__(self, book):
+    def __init__(self, book, lotsize=1):
         """Initialize the object.
         
         Arguments:
             book {obj} -- Book object. 
         """
         self.book=book
+        self.lotsize=lotsize
         self.bars=self.book.bars
         self.money_management_dict = {
             0: self.generate_naive_order
@@ -32,7 +34,7 @@ class MoneyManagement:
     # ========================================= #
     def resized_order(self, event):
         """Returns a Order Event generated from a money management
-        method that specified through the 
+        method that specified through the money management dictionary
         
         Arguments:
             event {obj} -- Signal Event object
@@ -52,14 +54,16 @@ class MoneyManagement:
     # money management types
     # ========================================= #
     def generate_naive_order(self, signal):
-        """Returns an order event to buy/sell the given the rounded 
-        number of units represented by the signal strength.
+        """Returns an order event to buy/sell the given the number 
+        of units represented by the signal strength rounded down to
+        nearest lot size. A signal to buy 101 shares where a lot is 
+        100 shares will produce a buy order for 100 shares or 1 lot. 
         """
         order = None
 
         symbol = signal.symbol
         direction = signal.signal_type
-        mkt_quantity = signal.strength
+        mkt_quantity = math.floor(signal.strength/self.lotsize)*self.lotsize
         cur_quantity = self.book.current_positions[symbol]
         order_type = 'MKT'
 
@@ -75,17 +79,17 @@ class MoneyManagement:
         return order        
     
     def generate_naive_order_stackable(self, signal):
-        """Returns an order event to buy/sell the given the rounded 
-        number of units represented by the signal strength. This is not 
-        limited to only one position. So if we are already long symbol x,
-        we will still go long again if we recieve another signal to buy
-        symbol x
+        """Returns an order event to buy/sell the given number of units 
+        represented by the signal strength rounded down to the nearest lot 
+        size. This is not limited to only one position. So if we are already 
+        long symbol x, we will still go long again if we recieve another 
+        signal to buy symbol x. 
         """
         order = None
 
         symbol = signal.symbol
         direction = signal.signal_type
-        mkt_quantity = signal.strength
+        mkt_quantity = math.floor(signal.strength/self.lotsize)*self.lotsize
         cur_quantity = self.book.current_positions[symbol]
         order_type = 'MKT'
 
@@ -107,7 +111,7 @@ class MoneyManagement:
         symbol.
         
         Arguments:
-            signal {[type]} -- Signal event
+            signal {[obj]} -- Signal event
         """
         order = None
         
@@ -117,6 +121,8 @@ class MoneyManagement:
         direction = signal.signal_type
         investment_amt = signal.strength
         mkt_quantity = investment_amt//last_price
+        mkt_quantity=math.floor(mkt_quantity/self.lotsize)*self.lotsize
+
         cur_quantity = self.book.current_positions[symbol]
         order_type = 'MKT'
         
@@ -143,6 +149,8 @@ class MoneyManagement:
         direction = signal.signal_type
         investment_amt = signal.strength
         mkt_quantity = investment_amt//last_price
+        mkt_quantity=math.floor(mkt_quantity/self.lotsize)*self.lotsize
+
         order_type = 'MKT'
         
         if direction == 'LONG':

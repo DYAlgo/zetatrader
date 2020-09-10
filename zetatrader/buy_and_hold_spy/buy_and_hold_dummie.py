@@ -5,9 +5,6 @@
 
 # This is a buy and hold strategy that simply buys whenever there is no 
 # position and holds it for 100bars. 
-
-from __future__ import print_function
-
 # Add the trading infrastructure and backtest directory to path
 import os
 import datetime as dt
@@ -167,8 +164,8 @@ if __name__ == "__main__":
     symbol_list = [8098]
     initial_capital = 10000.0
     heartbeat = 0.0
-    start_date = dt.datetime(2015, 1, 1, 0, 0, 0)
-    end_date = dt.datetime(2015, 6, 1, 0, 0, 0)
+    start_date = dt.datetime(2001, 1, 15, 0, 0, 0)
+    end_date = dt.datetime(2010, 11, 18, 0, 0, 0)
 
     backtest = TradingSession(
         symbol_list= symbol_list
@@ -177,6 +174,7 @@ if __name__ == "__main__":
         , session_start_dt= start_date
         , session_end_dt= end_date
         , session_type= 'backtest'
+        , lotsize= 1
         , price_handler= SecDbPriceHandler
         , execution_handler= BetterSimulatedExecutionHandler
         , portfolio= Portfolio
