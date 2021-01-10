@@ -19,7 +19,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
     process. This is at least x2 faster then querying Sec_DB per bar. 
     """
     def __init__(self, events, symbol_list, sec_db_pw = sec_db_cred
-        , insample_size_est = 0
+        , insample_size_est = 100
     ):
         """Initialize Sec_DB_Price_Handler object 
         
@@ -32,7 +32,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
         
         Keyword Arguments:
             sec_db_pw {[type]} -- [description] (default: {sec_db_cred})
-            insample_size_est {int} -- [description] (default: {2000})
+            insample_size_est {int} -- preloaded data (default: {100})
         """
         self.events = events
         self.sec_db_pw = sec_db_cred
@@ -292,12 +292,13 @@ class SecDbPriceHandler(AbstractPriceHandler):
     def get_latest_bars_values(self, symbol, val_type, N=1):
         """
         Returns the last N bar values from the
-        latest_symbol list, or N-k if less available.
+        latest_symbol list, or N-k if less available. Returns table in order
+        from earliest to latest data point
         """
         try:
             bars = self.symbol_data[symbol].loc[
-                self.bar_index +1 - N : self.bar_index, ['price_date',val_type]
-            ]
+                self.bar_index +1 - N : self.bar_index, [val_type]
+            ][val_type]
             # If symbol_data has less than N bars, try pulling data from sec_db
             if len(bars) < N:
                 print("Not enough data loaded, going to sec_db to find data")

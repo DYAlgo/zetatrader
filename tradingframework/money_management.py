@@ -26,6 +26,8 @@ class MoneyManagement:
             , 1: self.generate_naive_order_stackable
             , 2: self.generate_dollar_amount_order
             , 3: self.generate_dollar_amount_order_stackable
+            , 4: self.pct_equity_order
+            , 5: self.pct_equity_order_capped
         }
         
 
@@ -139,17 +141,16 @@ class MoneyManagement:
         make return an order event for it. 
         
         Arguments:
-            signal {[type]} -- Signal event
+            signal {obj} -- Signal event
         """
-        order = None
-        
+        order = None     
 
         symbol = signal.symbol
         last_price = self.bars.get_latest_bar_value(symbol, "close_price")
         direction = signal.signal_type
         investment_amt = signal.strength
         mkt_quantity = investment_amt//last_price
-        mkt_quantity=math.floor(mkt_quantity/self.lotsize)*self.lotsize
+        mkt_quantity=math.floor(mkt_quantity/self.lotsize)*self.lotsize # This seems wrong
 
         order_type = 'MKT'
         
@@ -157,4 +158,107 @@ class MoneyManagement:
             order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
         if direction == 'SHORT':
             order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')  
+        return order
+
+    def pct_equity_order(self, signal):
+        """Generates an order that is based on a percentage of total equity
+        available. A strengh of 1 means 100% of equity. No longer generates
+        an order if we are currently invested in that position, unless it 
+        is the opposite trade direction. 
+
+        Args:
+            signal (obj): Represents the percentage of total equity to 
+                allocate towards order.
+        """
+        order=None
+        order_type='MKT'
+
+        totaleqt=self.book.current_holdings['total']
+
+        symbol=signal.symbol
+        last_price=self.bars.get_latest_bar_value(symbol, "close_price")
+        direction=signal.signal_type
+        cur_quantity = self.book.current_positions[symbol]
+        pct=signal.strength
+        mkt_quantity=math.floor(
+            (pct*totaleqt)//last_price/self.lotsize)*self.lotsize
+
+        print(mkt_quantity)
+
+        if direction=='LONG' and cur_quantity==0:
+            order=OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
+        elif direction=='SHORT' and cur_quantity==0:
+            order=OrderEvent(symbol, order_type, mkt_quantity, 'SELL')
+        elif direction=='EXIT' and cur_quantity>0:
+            order=OrderEvent(symbol, order_type, abs(cur_quantity), 'SELL')
+        elif direction=='EXIT' and cur_quantity<0:
+            order=OrderEvent(symbol, order_type, abs(cur_quantity), 'BUY')
+        return order
+        
+    def pct_equity_order_stackable(self, signal):
+        """Generates an order that is based on a percentage of total equity
+        available. A strengh of 1 means 100% of equity. Always assumes 
+        we do not have a similar trade currently in our books. 
+
+        Args:
+            signal (obj): Represents the percentage of total equity to 
+                allocate towards order.
+        """
+        pass
+
+    def pct_equity_order_capped(self, signal):
+        """Generates an order that is based on a percentage of total equity
+        available. A strengh of 1 means 100% of equity. This money management
+        type caps holdings of the given security to the strength level. If our 
+        signal strength is 0.2 and the given symbol is only 10% of our total
+        equity. We will buy another 10% dollar equivalent of our total equity 
+        to make it equal of 0.2 of total equity. 
+
+        Args:
+            signal ([type]): Represents the total and target amount to hold
+                for given symbol.
+        """
+        order = None
+        order_type = 'MKT' # Maybe make this a variable in the future. 
+
+        port_val = self.book.current_holdings['total']
+
+        symbol = signal.symbol
+        last_price=self.bars.get_latest_bar_value(symbol, "close_price")
+        direction=signal.signal_type
+        cur_quantity = self.book.current_positions[symbol]
+        pct = signal.strength
+        total_required_qty = math.floor(
+            (pct * port_val)//last_price
+        )
+
+        if direction=='LONG':
+            # Rebalance position 
+            # How many we need to buy vs how many we own 
+            if cur_quantity < total_required_qty:
+                # Buy more
+                order = OrderEvent(
+                    symbol, order_type, total_required_qty - cur_quantity 
+                    , 'BUY'
+                )
+            elif cur_quantity > total_required_qty:
+                # Sell some to rebalance
+                order = OrderEvent(
+                    symbol, order_type, total_required_qty - cur_quantity
+                    , 'SELL'
+                )
+        elif direction=='SHORT':
+            # Reblance for the short side
+            if cur_quantity < total_required_qty:
+                # Sell More
+                order = OrderEvent(
+                    symbol, order_type, total_required_qty - cur_quantity 
+                    , 'SELL'
+                )
+            elif cur_quantity > total_required_qty:
+                # Buy back some to rebal
+                order = OrderEvent(
+                    symbol, order_type, total_required_qty - cur_quantity
+                    , 'BUY'
+                )
         return order

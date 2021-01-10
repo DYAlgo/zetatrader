@@ -33,36 +33,36 @@ conduct live trading.
 
 ## Directory 
 .
- |- tradinginfrastructure
- |  |- book
- |  |   |-book.py
- |  |- execution_handler
- |  |   |-execution.py 
- |  |- performance
- |  |   |-execution.py 
- |  |- portfolio
- |  |   |-execution.py 
- |  |- price_handler
- |  |   |-execution.py 
- |  |- strategy
- |  |   |-execution.py 
- |  |- event.py
- |  |- money_management.py
- |  |- risk_manager.py
- |  |- trading_session.py
+ |--- tradinginfrastructure <- Class objects for the event trading program
+ |    |--- book
+ |    |    |--- book.py
+ |    |--- execution_handler
+ |    |    |--- execution.py 
+ |    |--- performance
+ |    |    |--- execution.py 
+ |    |--- portfolio
+ |    |    |--- execution.py 
+ |    |--- price_handler
+ |    |    |--- execution.py 
+ |    |--- strategy
+ |    |    |--- execution.py 
+ |    |--- event.py
+ |    |--- money_management.py
+ |    |--- risk_manager.py
+ |    |--- trading_session.py
  |
- |- zetatrader
- |  | # Folders to different trading strategies
+ |--- zetatrader
+ |    | # Folders to different trading strategies
  |
  |
- |- datainfrastructure
- |  |- sec_db.py
- |  |- tiingo.py
- |  |- credentials_template.py
+ |--- datainfrastructure
+ |    |--- sec_db.py
+ |    |--- tiingo.py
+ |    |--- credentials_template.py
  |
- |- setup.py
- |- .gitignore
- |- README.md
+ |--- setup.py
+ |--- .gitignore
+ |--- README.md
 
 ## Credits
 Dr. Michael Moore at Quantstart who inspired my choice to write the algo

@@ -57,8 +57,6 @@ class SecDbDataHandler(SecDbConn):
             ticker {str} -- ticker to match
             aslist {bool} -- to return as list 
         """
-
-        
         # Return a table with symbol id and name or a list of symbol id
         pass
 

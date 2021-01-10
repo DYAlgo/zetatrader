@@ -133,8 +133,8 @@ class Book(AbstractBook):
             last_price = self.bars.get_latest_bar_value(s, "close_price")
             if last_price is not None:
                 market_value = self.current_positions[s] * last_price              
-                dh[s] = market_value
-                dh['total'] += market_value
+                dh[s] = market_value # also equals current holdings
+                dh['total'] += market_value # also equals current total
                 
                 # Adjust for dividends
                 if self.bars.get_latest_bar_dividend(s) != 0:
