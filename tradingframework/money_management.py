@@ -232,33 +232,22 @@ class MoneyManagement:
             (pct * port_val)//last_price
         )
 
-        if direction=='LONG':
+        trade_qty = total_required_qty - cur_quantity
+        if direction == 'LONG':
             # Rebalance position 
             # How many we need to buy vs how many we own 
-            if cur_quantity < total_required_qty:
+            if trade_qty > 0:
                 # Buy more
-                order = OrderEvent(
-                    symbol, order_type, total_required_qty - cur_quantity 
-                    , 'BUY'
-                )
-            elif cur_quantity > total_required_qty:
+                order = OrderEvent(symbol, order_type, abs(trade_qty), 'BUY')
+            elif trade_qty < 0:
                 # Sell some to rebalance
-                order = OrderEvent(
-                    symbol, order_type, total_required_qty - cur_quantity
-                    , 'SELL'
-                )
-        elif direction=='SHORT':
+                order = OrderEvent(symbol, order_type, abs(trade_qty), 'SELL')
+        elif direction == 'SHORT':
             # Reblance for the short side
             if cur_quantity < total_required_qty:
                 # Sell More
-                order = OrderEvent(
-                    symbol, order_type, total_required_qty - cur_quantity 
-                    , 'SELL'
-                )
+                order = OrderEvent(symbol, order_type, abs(trade_qty), 'SELL')
             elif cur_quantity > total_required_qty:
                 # Buy back some to rebal
-                order = OrderEvent(
-                    symbol, order_type, total_required_qty - cur_quantity
-                    , 'BUY'
-                )
+                order = OrderEvent(symbol, order_type, abs(trade_qty), 'BUY')
         return order
