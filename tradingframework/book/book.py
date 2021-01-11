@@ -133,8 +133,8 @@ class Book(AbstractBook):
             last_price = self.bars.get_latest_bar_value(s, "close_price")
             if last_price is not None:
                 market_value = self.current_positions[s] * last_price              
-                dh[s] = market_value # also equals current holdings
-                dh['total'] += market_value # also equals current total
+                dh[s] = self.current_holdings[s] = market_value
+                dh['total'] += market_value 
                 
                 # Adjust for dividends
                 if self.bars.get_latest_bar_dividend(s) != 0:
@@ -158,7 +158,8 @@ class Book(AbstractBook):
                 dh[s] = self.all_holdings[-1][s]
                 dh['total'] += self.all_holdings[-1][s]
 
-        # Append the current holdings
+        # Append the current and historical holdings
+        self.current_holdings['total'] = dh['total']
         self.all_holdings.append(dh)
 
     
@@ -206,7 +207,7 @@ class Book(AbstractBook):
         self.current_holdings['commission'] += fill.commission
         self.current_holdings['cash'] -= (cost + fill.commission)
         # Take cost amount out from total and add new mv on next bar
-        self.current_holdings['total'] -= (cost + fill.commission)     
+        self.current_holdings['total'] -=  fill.commission     
 
         print(
             '%s %s Order filled - date:%s price:%s size:%s units' %(

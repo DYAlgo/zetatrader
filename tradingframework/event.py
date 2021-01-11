@@ -139,7 +139,7 @@ class FillEvent(Event):
         exchange - The exchange where the order was filled.
         quantity - The filled quantity.
         direction - The direction of fill ('BUY' or 'SELL')
-        fill_cost - The holdings value in dollars.
+        fill_cost - The holdings value in dollars. (Non-negative)
         commission - An optional commission sent from IB.
         """
         self.type = 'FILL'
