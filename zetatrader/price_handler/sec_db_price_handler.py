@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd 
 import datetime as dt
 
-from dataframework.credentials import sec_db_cred
-from tradingframework.event import MarketEvent
-from tradingframework.price_handler.base import AbstractPriceHandler
+from zetatrader.credentials import securities_db_cred
+from zetatrader.event import MarketEvent
+from zetatrader.price_handler.base import AbstractPriceHandler
 
 
 class SecDbPriceHandler(AbstractPriceHandler):
@@ -18,7 +18,7 @@ class SecDbPriceHandler(AbstractPriceHandler):
     Sec_DB. The data is forward filled and returns data through a drip like 
     process. This is at least x2 faster then querying Sec_DB per bar. 
     """
-    def __init__(self, events, symbol_list, sec_db_pw = sec_db_cred
+    def __init__(self, events, symbol_list, sec_db_pw = securities_db_cred
         , insample_size_est = 100
     ):
         """Initialize Sec_DB_Price_Handler object 
@@ -31,11 +31,11 @@ class SecDbPriceHandler(AbstractPriceHandler):
                 trade 
         
         Keyword Arguments:
-            sec_db_pw {[type]} -- [description] (default: {sec_db_cred})
+            sec_db_pw {[type]} -- [description] (default: {securities_db_cred})
             insample_size_est {int} -- preloaded data (default: {100})
         """
         self.events = events
-        self.sec_db_pw = sec_db_cred
+        self.sec_db_pw = securities_db_cred
         self.symbol_list = symbol_list
         self.insample_size_est = insample_size_est
 

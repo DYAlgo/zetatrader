@@ -11,7 +11,7 @@ try:
 except ImportError:
     import queue
 
-from tradingframework.event import FillEvent, OrderEvent
+from zetatrader.event import FillEvent, OrderEvent
 
 
 class ExecutionHandler(object):

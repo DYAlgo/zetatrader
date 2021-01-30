@@ -4,7 +4,7 @@
 # money_management.py
 # Darren Jun Yi Yeap 03/07/2020
 import math
-from tradingframework.event import OrderEvent
+from zetatrader.event import OrderEvent
 
 
 class MoneyManagement:

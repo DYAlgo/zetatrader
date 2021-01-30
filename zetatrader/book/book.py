@@ -4,7 +4,7 @@
 # Book.py
 # Darren Jun Yi Yeap V0.1
 
-from tradingframework.book.base import AbstractBook
+from zetatrader.book.base import AbstractBook
 
 class Book(AbstractBook):
     """Class to provide trading book interface for backtest

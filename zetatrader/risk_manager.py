@@ -3,7 +3,7 @@
 
 # money_management.py
 # Darren Jun Yi Yeap 03/07/2020
-from tradingframework.event import OrderEvent
+from zetatrader.event import OrderEvent
 
 class RiskManager:
     """Encapsules the interaction between a portfolio and its hard risk limits.

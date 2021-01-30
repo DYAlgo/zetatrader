@@ -1,9 +1,9 @@
 import unittest
 import pandas as pd
 import datetime as dt
-from tradingframework.event import FillEvent
-from tradingframework.price_handler.base import AbstractPriceHandler
-from tradingframework.book.book import Book
+from zetatrader.event import FillEvent
+from zetatrader.price_handler.base import AbstractPriceHandler
+from zetatrader.book.book import Book
 
 class MockPriceHandler(AbstractPriceHandler):
     """Mimicks a price handler that feeds prices set by user for 

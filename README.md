@@ -1,11 +1,9 @@
 # zetatrader
-zetatrader is a Python library for algorithimic trading. It has 3 packages
-tradinginfrastructure, datainfrastructure, and zetatrader. zetatrader package
-consist of the trading strategy that utilizes the other packages to conduct 
-algo trading and research.
+zetatrader is a Python library for algorithimic trading. It is a event-driven 
+trading engine. 
 
 ## requirements
-python3.x
+python3.8 or above
 
 ## Installation
 Use the package manager to install package in your python environment.
@@ -19,21 +17,10 @@ pip3 install -e zetatrader
 ```
 
 ## Usage
-The library can be broken down into 3 diferent package. The 
-tradinginfrastructure package consist of modules that makes up
-the trading engine. 
-
-The datainfrastructure package makes up the 
-modules that lets up update and interact with our mysql securities
-database to conduct research. 
-
-Lastly, zetatrade consist holds the actual trading strategy algo 
-and utilizes tradinginfrastructure as the engine to backtest and
-conduct live trading.
+The library consist of an event-driven trading engine that can be run by using the TradingSession object in trading_session. TradingSession requires a PriceHandler object, ExecutionHandler object, Book object, Portfolio object, Strategy Object, MoneyManagement object, RiskManager object, and Performance object. All of these objects can be imported from within this package, but you can write your own custom components to fit your trading objectives. 
 
 ## Directory 
-.
- |--- tradinginfrastructure <- Class objects for the event trading program
+ |--- zetatrader <- Class objects for the event trading program
  |    |--- book
  |    |    |--- book.py
  |    |--- execution_handler
@@ -51,21 +38,12 @@ conduct live trading.
  |    |--- risk_manager.py
  |    |--- trading_session.py
  |
- |--- zetatrader
- |    | # Folders to different trading strategies
- |
- |
- |--- datainfrastructure
- |    |--- sec_db.py
- |    |--- tiingo.py
- |    |--- credentials_template.py
- |
  |--- setup.py
  |--- .gitignore
  |--- README.md
+ |--- credentials.py
 
 ## Credits
-Dr. Michael Moore at Quantstart who inspired my choice to write the algo
-in the form of a event-driven system.
+Dr. Michael Moore at Quantstart who inspired my choice to write the algo in the form of a event-driven system.
 
 

@@ -6,7 +6,7 @@ def readmepath(fname):
     return os.path.join(os.path.dirname(__file__), fname)
 
 setup(name='zetatrader'
-    , version='0.2dev'
+    , version='0.3'
     , author = 'Darren Yeap'
     , author_email = 'darren.yeap@outlook.com'
     , description = ("A algorithmic trading package for research, testing, and "

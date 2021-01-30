@@ -9,7 +9,7 @@ import pandas as pd
 import datetime as dt 
 
 from abc import ABCMeta, abstractmethod
-from tradingframework.event import MarketEvent, CloseEvent
+from zetatrader.event import MarketEvent, CloseEvent
 
 class AbstractPriceHandler:
     """
