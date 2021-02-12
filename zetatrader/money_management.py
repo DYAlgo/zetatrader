@@ -22,7 +22,8 @@ class MoneyManagement:
         self.lotsize=lotsize
         self.bars=self.book.bars
         self.money_management_dict = {
-            0: self.generate_naive_order
+            -1 : self.exit_all
+            , 0: self.generate_naive_order
             , 1: self.generate_naive_order_stackable
             , 2: self.generate_dollar_amount_order
             , 3: self.generate_dollar_amount_order_stackable
@@ -55,6 +56,29 @@ class MoneyManagement:
     # ========================================= #
     # money management types
     # ========================================= #
+    def exit_all(self, signal):
+        """Exits out all positions for the given symbol id. This is an easier
+        way to pass a signal that simply meant to liquidate everything. 
+
+        Args:
+            signal (obj): SignalEvent
+        """
+        order_type = 'MKT'
+        cur_quantity = self.book.current_positions[signal.symbol]
+
+        if signal.signal_type  == 'EXIT' and cur_quantity > 0:
+            # Sell out of position
+            order = OrderEvent(
+                signal.symbol, order_type, abs(cur_quantity), 'SELL'
+            )
+            return order
+        elif signal.signal_type == 'EXIT' and cur_quantity < 0:
+            # Buy out of position
+            order = OrderEvent(
+                signal.symbol, order_type, abs(cur_quantity), 'BUY'
+            )
+            return order
+
     def generate_naive_order(self, signal):
         """Returns an order event to buy/sell the given the number 
         of units represented by the signal strength rounded down to
