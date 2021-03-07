@@ -49,7 +49,7 @@ class Book(AbstractBook):
         """
         # Add code to get position from broker if trading session is live
         d = dict( (k,v) for k, v in [(s, 0) for s in self.symbol_list] )
-        d['datetime'] = self.bars.get_datetime()
+        d['datetime'] = self.bars.start_dt
         return [d]
 
     def construct_current_position(self):
@@ -69,7 +69,7 @@ class Book(AbstractBook):
         """
         # Add code to get position from broker if trading session is live
         d = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
-        d['datetime'] = self.bars.get_datetime()
+        d['datetime'] = self.bars.start_dt
         d['cash'] = self.initial_capital
         d['commission'] = 0.0
         d['total'] = self.initial_capital
@@ -101,7 +101,7 @@ class Book(AbstractBook):
         Makes use of a MarketEvent from the events queue.
         """
         # Consider dropping event function - not used at all
-        latest_datetime = self.bars.get_datetime()
+        latest_datetime = self.bars.get_latest_bar_datetime()
         # Update positions
         # ================
         dp = dict( (k,v) for k, v in [(s, 0) for s in self.symbol_list] )

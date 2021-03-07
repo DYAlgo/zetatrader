@@ -20,11 +20,11 @@ class TradingSession(object):
     """
 
     def __init__(
-        self, symbol_list, initial_capital=0.0, heartbeat=0.0
+        self, symbol_dict, initial_capital=0.0, heartbeat=0.0
         , session_start_dt=None, session_end_dt=None, session_type='backtest' 
         , lotsize=None, price_handler=None, execution_handler=None, portfolio=None
         , strategy=None, book=None, money_management=None, risk_manager=None
-        , performance=None, output_path=None, strategy_parameters=None
+        , performance=None, output_path=None, other_parameters={}
     ):
         """Initialize the class object.
         
@@ -54,10 +54,11 @@ class TradingSession(object):
             risk_manager {class} -- risk manager object (default: {None})
             performance {class} -- performance object (default: {None})
             output_path {str} -- The path to save all outputs (i.e: equity curve)
-            strategy_parameters {dict} -- Dict of parameter variables to parse into 
-                strategy class. Keys in dict are parameter names. 
+            strategy_parameters {dict} -- Dict of parameter variables to parse 
+                into each class. Keys in dict are class names. Sub-keys are 
+                parameter names 
         """ 
-        self.symbol_list = symbol_list
+        self.symbol_dict = symbol_dict
         self.initial_capital = initial_capital
         self.heartbeat = heartbeat
         self.session_start_dt = session_start_dt
@@ -75,7 +76,7 @@ class TradingSession(object):
         self.risk_manager = risk_manager
         self.performance = performance
         self.output_path = output_path
-        self.strategy_parameters = strategy_parameters
+        self.other_parameters = other_parameters
 
         self.signals = 0
         self.orders = 0
@@ -91,57 +92,83 @@ class TradingSession(object):
         """
         # Initialize price_handler class
         if self.session_type == 'backtest':
-            # Add log here
-            self.price_handler = self.price_handler(
-                self.events, self.symbol_list
-            )
-            self.price_handler.set_handler_datetime(
-                self.session_start_dt-dt.timedelta(days = 1)
-                , self.session_end_dt
-            )
+            if  self.other_parameters.get('price_handler_param') == None:
+                # TODO: Add logging here
+                self.price_handler = self.price_handler(
+                    events = self.events
+                    , symbol_dict = self.symbol_dict
+                    , start_dt = self.session_start_dt
+                    , end_dt = self.session_end_dt
+                )
+            else:
+                # TODO: Add logging here
+                self.price_handler = self.price_handler(
+                    events=self.events
+                    , symbol_dict = self.symbol_dict
+                    , start_dt = self.session_start_dt
+                    , end_dt = self.session_end_dt
+                    , **self.other_parameters.get('price_handler_param')
+                ) 
         elif self.session_type =='live':
+            # TODO: Add functionality for live trading with XTB
             pass
         else:
             print('Unknown session type detected.'
                 + 'No price handler initialize.'
             )
             
-        # Initialize strategy class based on whether is is parameterless or not
-        if self.strategy_parameters==None:
+        # INITIALIZE STRATEGY CLASS
+        if self.other_parameters.get('strategy_param') == None:
             self.strategy = self.strategy(self.price_handler, self.events) 
         else:
-            try:
-                if type(self.strategy_parameters)==dict:
-                    self.strategy = self.strategy(
-                        self.price_handler, self.events, **self.strategy_parameters
-                    )
-            except:
-                raise ValueError("Incorrect strategy parameter variable given.")
-        
-        # Initialize Performance Class
-        self.performance = self.performance(self.output_path)
-
-        # Initialize Portfolio Class
-        self.portfolio = self.portfolio(
-            self.initial_capital, self.price_handler, self.events
-            , self.session_type, self.lotsize, self.book, self.money_management
-            , self.risk_manager, self.performance
-        )
-
-        # Initialize execution handler_class
-        if self.session_type == 'backtest':
-            # Simulated Execution Handler requires price handler
-            self.execution_handler = self.execution_handler(
-                self.events, self.price_handler
+            self.strategy = self.strategy(
+                self.price_handler, self.events
+                , **self.other_parameters.get('strategy_param')
             )
+        
+        # INIT PERFORMANCE CLASS
+        if self.other_parameters.get('performance_param') == None:
+            self.performance = self.performance(self.output_path)
+        else:
+            self.performance = self.performance(
+                self.output_path
+                , **self.other_parameters.get('performance_param')
+            )
+
+        # INITIALIZE PORTFOLIO CLASS
+        if self.other_parameters.get('portfolio_param') == None:
+            self.portfolio = self.portfolio(
+                self.initial_capital, self.price_handler, self.events
+                , self.session_type, self.lotsize, self.book
+                , self.money_management
+                , self.risk_manager, self.performance
+            )
+        else:
+            self.portfolio = self.portfolio(
+                self.initial_capital, self.price_handler, self.events
+                , self.session_type, self.lotsize, self.book
+                , self.money_management, self.risk_manager
+                , self.performance
+                , **self.other_parameters.get('portfolio_param')
+            )
+
+        # INIT EXECUTION HANDLER CLASS
+        if self.session_type == 'backtest':
+            if self.other_parameters.get('execution_param') == None:
+                self.execution_handler = self.execution_handler(
+                    self.events, self.price_handler
+                )
+            else:
+                self.execution_handler = self.execution_handler(
+                    self.events, self.price_handler
+                    , **self.other_parameters.get('execution_param')
+                )
         elif self.session_type == 'live':
             pass
         else:
             print('Unknown session type detected.'
                 + 'No execution handler initialize.'
             )
-
-        # Initialize performance (Maybe move this into portfolio)
 
         print(
             "Initializing objects...\n"
