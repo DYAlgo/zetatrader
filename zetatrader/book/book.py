@@ -107,16 +107,17 @@ class Book(AbstractBook):
         dp = dict( (k,v) for k, v in [(s, 0) for s in self.symbol_list] )
         dp['datetime'] = latest_datetime
 
-        #Adjust for splits 
-        for s in self.symbol_list:
-            split = self.bars.get_latest_bar_split(s)
-            if split != 1.000000 and split >0.000000:
-                print("%s initiate: %s for 1 split" %(s, split))
-                self.current_positions[s] = self.current_positions[s] * \
-                    split
-                dp[s] = self.current_positions[s]
-            else:
-                dp[s] = self.current_positions[s]
+        #Adjust for splits
+        if self.bars.frequency == 'daily': 
+            for s in self.symbol_list:
+                split = self.bars.get_latest_bar_split(s)
+                if split != 1.000000 and split >0.000000:
+                    print("%s initiate: %s for 1 split" %(s, split))
+                    self.current_positions[s] = self.current_positions[s] * \
+                        split
+                    dp[s] = self.current_positions[s]
+                else:
+                    dp[s] = self.current_positions[s]
 
         # Append the current positions
         self.all_positions.append(dp)
@@ -136,24 +137,26 @@ class Book(AbstractBook):
                 dh[s] = self.current_holdings[s] = market_value
                 dh['total'] += market_value 
                 
+                
                 # Adjust for dividends
-                if self.bars.get_latest_bar_dividend(s) != 0:
-                    cash_dividend = (
-                        self.bars.get_latest_bar_dividend(s)
-                        *
-                        self.current_positions[s]
-                    )
-                    self.current_holdings['cash'] += cash_dividend
-                    dh['cash'] += cash_dividend
-                    dh['total'] += cash_dividend
-
-                    if self.current_positions[s] > 0:
-                        print('%s issues: %s of total dividends' %(s,
-                                self.bars.get_latest_bar_dividend(s)
-                                *
-                                self.current_positions[s]
-                            )
+                if self.bars.frequency == 'daily':
+                    if self.bars.get_latest_bar_dividend(s) != 0:
+                        cash_dividend = (
+                            self.bars.get_latest_bar_dividend(s)
+                            *
+                            self.current_positions[s]
                         )
+                        self.current_holdings['cash'] += cash_dividend
+                        dh['cash'] += cash_dividend
+                        dh['total'] += cash_dividend
+
+                        if self.current_positions[s] > 0:
+                            print('%s issues: %s of total dividends' %(s,
+                                    self.bars.get_latest_bar_dividend(s)
+                                    *
+                                    self.current_positions[s]
+                                )
+                            )
             else:
                 dh[s] = self.all_holdings[-1][s]
                 dh['total'] += self.all_holdings[-1][s]

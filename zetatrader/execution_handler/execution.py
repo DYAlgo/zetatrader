@@ -109,7 +109,7 @@ class BetterSimulatedExecutionHandler(ExecutionHandler):
     handler.
     """
 
-    def __init__(self, events, bars = None):
+    def __init__(self, events, bars = None, commission=1):
         """
         Initialises the handler, setting the event queues
         up internally.
@@ -117,9 +117,11 @@ class BetterSimulatedExecutionHandler(ExecutionHandler):
         Parameters:
         events - The Queue of Event objects.
         bars - The datahandler object
+        commission - Commissions per trade
         """
         self.events = events
         self.bars = bars
+        self.commission = commission
 
         if bars is None:
             print("Data Handler not inserted into Execution Handler")
@@ -157,7 +159,7 @@ class BetterSimulatedExecutionHandler(ExecutionHandler):
                     , event.quantity
                     , event.direction
                     , fill_cost
-                    , commission=1
+                    , commission=self.commission
                 )
                 self.events.put(fill_event)
 
