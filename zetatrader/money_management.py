@@ -207,11 +207,9 @@ class MoneyManagement:
         mkt_quantity=math.floor(
             (pct*totaleqt)//last_price/self.lotsize)*self.lotsize
 
-        print(mkt_quantity)
-
-        if direction=='LONG' and cur_quantity==0:
+        if direction=='LONG' and cur_quantity<=0:
             order=OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
-        elif direction=='SHORT' and cur_quantity==0:
+        elif direction=='SHORT' and cur_quantity>=0:
             order=OrderEvent(symbol, order_type, mkt_quantity, 'SELL')
         elif direction=='EXIT' and cur_quantity>0:
             order=OrderEvent(symbol, order_type, abs(cur_quantity), 'SELL')
