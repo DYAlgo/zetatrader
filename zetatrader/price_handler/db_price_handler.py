@@ -107,6 +107,14 @@ class DbPriceHandler(AbstractPriceHandler):
     # ================================#
     # PRICE HANDLER FUNCTIONS
     # ================================# 
+    def get_symbolid(self, symbol):
+        """[summary]
+
+        Args:
+            symbol ([type]): [description]
+        """
+        return self.symbol_dict.get(symbol)
+
     def get_latest_bar(self, symbol):
         """Return latest bar
 
@@ -128,7 +136,7 @@ class DbPriceHandler(AbstractPriceHandler):
         Returns:
             [type]: [description]
         """
-        if (n-1) > self.bar_index:
+        if (n-1) < self.bar_index:
             bar = self.symbol_data.get(symbol).loc[
                 self.bar_index-n+1: self.bar_index
             ]
@@ -153,7 +161,7 @@ class DbPriceHandler(AbstractPriceHandler):
         """
         return self.get_latest_bar(symbol)[val_type]
 
-    def get_latest_bars_values(self, symbol, val_type, n=1):
+    def get_latest_bar_values(self, symbol, val_type, n=1):
         return self.get_latest_bars(symbol, n)[val_type]
 
     def update_bars(self):
@@ -182,11 +190,12 @@ class DbPriceHandler(AbstractPriceHandler):
         if any was applied to the security. 
         '''
         if self.frequency == 'daily':
+            symbol_id = self.symbol_dict.get(symbol)
             action_date = self.get_latest_bar_datetime()
 
             query = '''SELECT split_ratio FROM daily_corporate_action
             WHERE symbol_id = '%s' AND action_date = '%s' 
-            ''' %(symbol, action_date)
+            ''' %(symbol_id, action_date)
             bar = pd.read_sql_query(query, con=self.sec_db_conn)
             
             if bar.empty == False:
@@ -202,11 +211,12 @@ class DbPriceHandler(AbstractPriceHandler):
         day. 
         '''
         if self.frequency == 'daily':
+            symbol_id = self.symbol_dict.get(symbol)
             action_date = self.get_latest_bar_datetime()
 
             sql = '''SELECT dividend FROM daily_corporate_action
             WHERE symbol_id = '%s' AND action_date = '%s' 
-            ''' %(symbol, action_date)
+            ''' %(symbol_id, action_date)
             bar = pd.read_sql_query(sql, con=self.sec_db_conn)
             
             if bar.empty == False:
