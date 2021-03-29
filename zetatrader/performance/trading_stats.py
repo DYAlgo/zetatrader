@@ -12,6 +12,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from os import listdir
 from os.path import isdir, join
+from scipy.stats import kurtosis, skew
 
 class TradingStats:
     """The performance class is a stats tracker for a trading session that
@@ -151,6 +152,9 @@ class TradingStats:
             curve['benchmark'].iloc[0] = 0.0
             curve['benchmark'] = curve['benchmark'].fillna(0)
             curve['benchmark'] = (1.0 + curve['benchmark']).cumprod()
+            curve['underwater'] = (
+                curve['equity_curve']/curve['equity_curve'].expanding(2).max()
+            ) - 1 
         except:
             # Print Warning of missing benchmark
             print(f'Benchmark {self.benchmark} not found!') 
@@ -193,12 +197,12 @@ class TradingStats:
                 break
         if self.tearsheet:
             # Plot the return v benchmark
-            df = pd.melt(
-                self.equity_curve, value_vars=['equity_curve', 'benchmark']
-                , ignore_index=False
-            )
-            sns.lineplot(data=df, x='datetime', y='value', hue='variable')
-            plt.show()
+            # df = pd.melt(
+            #     self.equity_curve, value_vars=['equity_curve', 'benchmark']
+            #     , ignore_index=False
+            # )
+            # sns.lineplot(data=df, x='datetime', y='value', hue='variable')
+            self.plot_tearsheet()
 
 
     def save_trade_log(self):
@@ -217,4 +221,88 @@ class TradingStats:
                     self.output_path + r'/tradelog/%s.csv'%self.output_number
                 )
                 break
+    
+    # ========================
+    # PLOT TEARSHEET
+    # ========================
+    def plot_tearsheet(self):
+        """Plots a tearsheet of the trading performance.
 
+        Args:
+            returns ([type]): [description]
+            trade ([type]): [description]
+        """
+        # Create figure 
+        fig = plt.figure(constrained_layout=True, figsize=(15, 12))
+        gs = fig.add_gridspec(5, 3)
+
+        # Plot the return v benchmark
+        ax1 = fig.add_subplot(gs[0:2, :])
+        ax1.plot(self.equity_curve.index, self.equity_curve['equity_curve']
+            , label='Equity Curve'
+        )
+        ax1.plot(self.equity_curve.index, self.equity_curve['benchmark']
+            , label='Benchmark'
+        )
+        ax1.legend()
+
+        # Plot underwater curve
+        ax2 = fig.add_subplot(gs[2:4, :])
+        ax2.fill_between(self.equity_curve.index, 0, self.equity_curve['underwater']
+            , facecolor='red'
+        )
+
+        # Plot performance metric table
+        df = pd.DataFrame(
+            {
+                'Annual Return %': [self.cal_annualized_return(self.equity_curve)]
+                , 'Sharpe Ratio': [self.cal_sharpe_ratio(self.equity_curve)]
+                , 'Max Drawdown %': [self.cal_max_drawdown(self.equity_curve)]
+                , 'Gain to Pain': [self.cal_gain_to_pain(self.equity_curve)]
+                , 'Skew': [self.cal_return_skew(self.equity_curve)]
+                , 'Kurtosis': [self.cal_return_kurtosis(self.equity_curve)]
+            }
+        )
+
+        cell_text = []
+        for row in range(len(df)):
+            cell_text.append(df.iloc[row])
+        ax3 = fig.add_subplot(gs[4:, :])
+        ax3.table(cellText=cell_text, colLabels=list(df.columns), loc='center')
+        ax3.axis('off')
+        plt.show()
+
+    # ========================
+    # METRIC CALCULATORS
+    # ========================
+    def cal_annualized_return(self, curve):
+        """Computes the annualize return.
+
+        Args:
+            curve ([type]): equity curve
+        """
+        return round(((curve['equity_curve'].iloc[-1] - 1) / 
+            (curve['equity_curve'].index[-1] 
+            - curve['equity_curve'].index[0]).days
+        ) * 365 * 100, 4)
+    
+    def cal_sharpe_ratio(self, curve):
+        return round(((curve['returns']).mean()
+            /(curve['returns']).std()
+        ), 4)
+
+    def cal_max_drawdown(self, curve):
+        return round(100*min(curve['underwater'].dropna()), 4)
+
+    def cal_gain_to_pain(self, curve):
+        curve = curve.dropna()
+        return round(
+            (curve['equity_curve'].iloc[-1]-1)/(-min(curve['underwater']))
+            , 4
+        )
+
+    def cal_return_skew(self, curve):
+        return round(skew(curve['returns'].dropna()), 3)
+
+    def cal_return_kurtosis(self, curve):
+        return round(kurtosis(curve['returns'].dropna()), 3)
