@@ -261,6 +261,7 @@ class TradingStats:
                 , 'Gain to Pain': [self.cal_gain_to_pain(self.equity_curve)]
                 , 'Skew': [self.cal_return_skew(self.equity_curve)]
                 , 'Kurtosis': [self.cal_return_kurtosis(self.equity_curve)]
+                , 'Sortino': [self.cal_sortino_ratio(self.equity_curve)]
             }
         )
 
@@ -288,8 +289,7 @@ class TradingStats:
     
     def cal_sharpe_ratio(self, curve):
         return round(((curve['returns']).mean()
-            /(curve['returns']).std()
-        ), 4)
+            /(curve['returns']).std()), 4)
 
     def cal_max_drawdown(self, curve):
         return round(100*min(curve['underwater'].dropna()), 4)
@@ -298,11 +298,14 @@ class TradingStats:
         curve = curve.dropna()
         return round(
             (curve['equity_curve'].iloc[-1]-1)/(-min(curve['underwater']))
-            , 4
-        )
+            , 4)
 
     def cal_return_skew(self, curve):
         return round(skew(curve['returns'].dropna()), 3)
 
     def cal_return_kurtosis(self, curve):
         return round(kurtosis(curve['returns'].dropna()), 3)
+
+    def cal_sortino_ratio(self, curve):
+        return round(curve['returns'].mean()/
+            curve[curve['returns']<0]['returns'].std(), 4) 
