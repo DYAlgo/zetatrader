@@ -1,6 +1,6 @@
 # zetatrader
-zetatrader is a Python library for algorithimic trading. It is a event-driven 
-trading/backtesting engine. 
+Python library for event-driven trading/backtest. This project was inspired by Dr. Michael Moore's qstrader library. I decided to build this to allow me to create a slightly different event-drivent backtest/trading engine that is 
+customized for my own trading requirements.  
 
 ## requirements
 python3.8 or above
@@ -42,7 +42,6 @@ The library consist of an event-driven trading engine that can be run by using t
  |--- .gitignore\
  |--- README.md\
 
-## Credits
-Dr. Michael Moore at Quantstart who inspired my choice to write the algo in the form of a event-driven system.
-
+## Inspiration
+www.quantstart.com/qstrader 
 
