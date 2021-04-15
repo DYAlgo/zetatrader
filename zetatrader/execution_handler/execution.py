@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 # execution.py
-# By Darren Yeap V1.0
+# @author: Darren 
 
 from abc import ABCMeta, abstractmethod
 import datetime as dt
@@ -11,7 +11,7 @@ try:
 except ImportError:
     import queue
 
-from zetatrader.event import FillEvent, OrderEvent
+from zetatrader.event import FillEvent
 
 
 class ExecutionHandler(object):

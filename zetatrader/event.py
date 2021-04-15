@@ -78,7 +78,7 @@ class OrderEvent(Event):
     quantity and a direction.
     """
 
-    def __init__(self, symbol, order_type, quantity, direction):
+    def __init__(self, symbol, order_type, quantity, direction, lot_id=0, isexit=False):
         """
         Initialises the order type, setting whether it is
         a Market order ('MKT') or Limit order ('LMT'), has
@@ -90,7 +90,7 @@ class OrderEvent(Event):
 
         Parameters:
         symbol - The instrument to trade.
-        order_type - 'MKT' or 'LMT' for Market or Limit.
+        order_type - 'MKT' or 'LIMIT' for Market or Limit.
         quantity - Non-negative integer for quantity.
         direction - 'BUY' or 'SELL' for long or short.
         """
@@ -99,6 +99,8 @@ class OrderEvent(Event):
         self.order_type = order_type
         self.quantity = quantity
         self.direction = direction
+        self.lot_id = lot_id
+        self.isexit = isexit
 
     def print_order(self):
         """
@@ -123,7 +125,7 @@ class FillEvent(Event):
     """
 
     def __init__(self, timeindex, symbol, exchange, quantity, 
-                 direction, fill_cost, commission=None):
+                 direction, fill_cost, commission=0, lot_id=0):
         """
         Initialises the FillEvent object. Sets the symbol, exchange,
         quantity, direction, cost of fill and an optional 
@@ -149,6 +151,7 @@ class FillEvent(Event):
         self.quantity = quantity
         self.direction = direction
         self.fill_cost = fill_cost
+        self.lot_id = lot_id
 
         # Calculate commission
         if commission is None:
