@@ -18,9 +18,7 @@ class Portfolio:
     , 60 min or EOD and ticks. 
     """
     def __init__(self, initial_capital, bars, events, session_type='backtest'
-        ,lotsize=None, book=None, money_management=None, risk_manager=None
-        , performance=None, 
-    ):
+            ,lotsize=None, book=None, money_management=None, performance=None, ):
         """Initializes portfolio class
         
         Arguments:
@@ -31,7 +29,6 @@ class Portfolio:
             session_type {str} -- [description] (default: {'backtest'})
             book {[type]} -- [description] (default: {None})
             money_management {[type]} -- [description] (default: {None})
-            risk_manager {[type]} -- [description] (default: {None})
             performance {[type]} -- [description] (default: {None})
         """
         self.initial_capital = initial_capital
@@ -42,7 +39,6 @@ class Portfolio:
 
         self.book = book
         self.money_management = money_management
-        self.risk_manager = risk_manager
         self.performance = performance
     
         self.construct_portfolio()
@@ -67,11 +63,6 @@ class Portfolio:
                 self.money_management = self.money_management(self.book, self.lotsize)
             else:
                 self.money_management = self.money_management(self.book)  
-
-        # Create risk_manager
-        if self.risk_manager is not None:
-            self.risk_manager = self.risk_manager()
-
 
     # ========================= # 
     # Update Portfolio Index,
