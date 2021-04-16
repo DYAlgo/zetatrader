@@ -41,7 +41,7 @@ class RiskManager:
     # ========================================= #
     # Positiong Sizing Type
     # ========================================= #
-    def exit_position(self, signal):
+    def exit_order(self, signal):
         order_type = 'MKT'
         direction = signal.signal_type
         cur_quantity = self.book.current_positions[signal.symbol]
@@ -81,8 +81,8 @@ class RiskManager:
         direction = signal.signal_type
         cur_quantity = self.book.current_positions[signal.symbol]
         equity = self.book.equity
-        tick_value = self.book.symbol_info['']
-        tick_size = self.book.symbol_info['']
+        tick_value = self.book.symbol_info[symbol]['tick_value']
+        tick_size = self.book.symbol_info[symbol]['tick_size']
         total_ticks = signal.strength['price_risk']/tick_size
 
         portfolio_risk = equity * signal.strength['percent_equity']

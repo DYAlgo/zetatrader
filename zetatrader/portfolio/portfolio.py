@@ -17,8 +17,9 @@ class Portfolio:
     of a "bar" or tick, i.e. secondly, minutely, 5-min, 30-min
     , 60 min or EOD and ticks. 
     """
-    def __init__(self, initial_capital, bars, events, session_type='backtest'
-            ,lotsize=None, book=None, money_management=None, performance=None, ):
+    def __init__(self, bars, events, session_type='backtest'
+            , initial_capital=10000, book=None, money_management=None
+            , performance=None, connection=None):
         """Initializes portfolio class
         
         Arguments:
@@ -35,7 +36,7 @@ class Portfolio:
         self.bars = bars
         self.events = events
         self.session_type = session_type
-        self.lotsize=lotsize
+        self.connection = connection
 
         self.book = book
         self.money_management = money_management
@@ -51,18 +52,19 @@ class Portfolio:
         , the money_management object, the risk manager, and the performance
         tracker (In that order).
         """
+        pass # TODO: Depreciate this function
         # Create book
-        if self.book is not None:
-            self.book = self.book(self.initial_capital, self.bars
-                , self.session_type
-            )
+        # if self.book is not None:
+        #     self.book = self.book(self.initial_capital, self.bars
+        #         , self.session_type
+        #     )
             
-        # Create money_management
-        if self.money_management is not None:
-            if type(self.lotsize)==int:
-                self.money_management = self.money_management(self.book, self.lotsize)
-            else:
-                self.money_management = self.money_management(self.book)  
+        # # Create money_management
+        # if self.money_management is not None:
+        #     if type(self.lotsize)==int:
+        #         self.money_management = self.money_management(self.book, self.lotsize)
+        #     else:
+        #         self.money_management = self.money_management(self.book)  
 
     # ========================= # 
     # Update Portfolio Index,
@@ -70,8 +72,7 @@ class Portfolio:
     # ========================= #  
     def update_timeindex(self, event):
         """Updates portfolio value through book object"""
-        self.book.update_timeindex(event)
-
+        self.book.update_timeindex()
     
     # ========================= #
     # SIGNAL HANDLING 
@@ -85,8 +86,6 @@ class Portfolio:
         """
         if event.type == 'SIGNAL':
             order_event = self.money_management.resized_order(event)
-            # Can also parse it thru a risk manager here.
-            self.events.put(order_event)
     
 
     # ======================
