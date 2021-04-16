@@ -5,7 +5,7 @@
 # @author: Darren
 import time
 import datetime as dt
-from math import floor, ceil 
+from math import floor
 from zetatrader.event import OrderEvent
 from zetatrader.book.base import AbstractBook
 
@@ -42,16 +42,6 @@ class XtbBook(AbstractBook):
         # SETUP INITIAL PORTFOLIO
         self.construct_current_book()
 
-    def round_up(self, volume, lot_size):
-        """Round up volume to the nearest lot_size. So a volume
-        of 1.23 with a lot_size of 0.05 will return 1.25.
-
-        Args:
-            volume ([type]): volume we want to round
-            lot_size ([type]): minimum lot size for symbol
-        """
-        return ceil(volume*(1/lot_size))/(1/lot_size)
-
     def round_down(self, volume, lot_size):
         return floor(volume*(1/lot_size))/(1/lot_size)
 
@@ -76,11 +66,16 @@ class XtbBook(AbstractBook):
     def get_margin(self):
         acc_info = self.connection.get_account_info()
         return acc_info['margin']
-
+    
+    # ==================================================== #
+    # Portfolio Constructor/Getter
+    # ==================================================== #
     def construct_symbol_info(self):
         d = {}
         for symbol in self.symbol_list:
             d[symbol] = self.connection.get_symbol_info(symbol, False)
+            d[symbol]['tick_value'] = d[symbol]['tickValue'] # For Risk Manager
+            d[symbol]['tick_size'] = d[symbol]['tickSize'] # For Risk Manager
             time.sleep(0.2)
         return d
     
@@ -93,11 +88,9 @@ class XtbBook(AbstractBook):
         # Update Current Position using current lots
         self.current_positions = self.construct_current_position()
         # # Construct Current Notional 
-        # self.current_notional = self.construct_current_notional()
         # Construct Current Holdings
         self.current_holdings = self.construct_current_holdings()
         # Construct Current Margin
-        # self.current_margins = self.construct_current_margin()
         print('Initial Portfolio Constructed') 
 
     def construct_current_position(self):
@@ -146,7 +139,7 @@ class XtbBook(AbstractBook):
         for symbol in self.symbol_list:
             volume = self.current_positions[symbol]
             d[symbol] = self.connection.get_margin_requirement(symbol, abs(volume))
-            time.sleep(0.2) # To prevent flooding API
+            time.sleep(0.5) # To prevent flooding API
         d['total'] = self.equity
         d['cash'] = self.equity - self.total_margin
         return d
@@ -210,6 +203,7 @@ class XtbBook(AbstractBook):
         # Update Current lots, then position, then holdings. 
         self.current_lots = self.get_current_lots()
         self.current_positions = self.construct_current_position()
+        time.sleep(0.2)
         self.current_holdings = self.construct_current_holdings()
 
     # ==================================================== #
@@ -224,11 +218,15 @@ class XtbBook(AbstractBook):
         current_pos = self.current_positions[symbol] 
         if current_pos >= 0 and pos_dir == 'BUY':
             fill_size = self.round_down(units, lot_size=lot_size)
-            order = OrderEvent(symbol, 'MKT', fill_size, 'BUY', 0, isexit=False)
-            self.events.put(order)
+            margin_req = self.connection.get_margin_requirement(symbol, fill_size)
+            if margin_req < self.equity - self.total_margin:
+                order = OrderEvent(symbol, 'MKT', fill_size, 'BUY', 0, isexit=False)
+                self.events.put(order)
+            else:
+                print('Not enough Cash to meet positions margin requirement to trade')
         elif current_pos <= 0 and pos_dir == 'SELL':
             fill_size = self.round_down(units, lot_size=lot_size)
-            order = OrderEvent(symbol, 'MKT', abs(units), 'SELL', 0, isexit=False)
+            order = OrderEvent(symbol, 'MKT', fill_size, 'SELL', 0, isexit=False)
             self.events.put(order)
         else:
             raise('Current Position and Units must have same signs.') 
@@ -253,7 +251,7 @@ class XtbBook(AbstractBook):
                 fill_dir = 'BUY'
         
         if fill_dir == 'BUY' or fill_dir == 'SELL' :
-            all_lot_id = self.current_lots[symbol].keys()
+            all_lot_id = list(self.current_lots[symbol].keys())
             for i in all_lot_id:
                 if units > 0:
                     qty = 0
@@ -267,12 +265,7 @@ class XtbBook(AbstractBook):
                         qty = self.round_down(units, lot_size=lot_size)
                         units = 0    
 
-                    order = OrderEvent(
-                        symbol
-                        , 'MKT'
-                        , qty
-                        , fill_dir
-                        , lot_id=i
+                    order = OrderEvent(symbol, 'MKT', qty, fill_dir, lot_id=i
                         , isexit=True)
                     self.events.put(order)   
         
@@ -280,19 +273,22 @@ class XtbBook(AbstractBook):
         """Close all lots for a given symbol.
 
         Args:
-            symbol ([type]): [description]
-            units ([type]): [description]
+            symbol (str): symbol to trade
         """
-        current_pos = self.current_positions[symbol] 
-        fill_dir = 'BUY' if current_pos >0 else 'SELL' if current_pos<0 else None
-        all_lot_id = self.current_lots[symbol].keys()
-        for i in all_lot_id:
-            lot_size = self.current_lots[symbol][i]['volume']
-            order = OrderEvent(
-                symbol
-                , 'MKT'
-                , lot_size
-                , fill_dir
-                , lot_id=i
-                , isexit=True)
-            self.events.put(order)
+        all_lot_id = list(self.current_lots[symbol].keys())
+        if all_lot_id:
+            for i in all_lot_id:
+                direction = self.current_lots[symbol][i]['direction']
+                if direction > 0:
+                    direction = 'SELL'
+                else:
+                    direction = 'BUY'
+                lot_size = self.current_lots[symbol][i]['volume']
+                order = OrderEvent(
+                    symbol
+                    , 'MKT'
+                    , lot_size
+                    , direction
+                    , lot_id=i
+                    , isexit=True)
+                self.events.put(order)
