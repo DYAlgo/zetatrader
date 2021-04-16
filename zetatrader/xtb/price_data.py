@@ -150,6 +150,7 @@ class PriceData:
         for symbol in self.symbol_list:
             # Check if new data found
             bar = self.get_latest_bar(symbol)
+            time.sleep(0.5)
             last_bar = self.symbol_data[symbol].loc[0, 'price_date']
             if last_bar < bar.loc[0, 'price_date']:
                 # NEW DATA
