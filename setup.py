@@ -15,7 +15,7 @@ setup(name='zetatrader'
     , install_requires=['wheel','numpy', 'scipy', 'matplotlib', 'pandas'
         ,'scikit-learn','ipython','pyzmq','pygments', 'patsy','statsmodels'
         ,'pyqt5==5.14', 'PyMySQL', 'lxml', 'mysql-connector-python','qtconsole'
-        ,'jupyter', 'mplfinance']
+        ,'jupyter', 'numpy_ext']
     , long_description=open(readmepath('README.md')).read()
 )
 
