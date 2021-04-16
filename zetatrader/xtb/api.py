@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import datetime as dt
+from dateutil import tz
+from pytz import timezone
 
 # Import from own package
 from xapi.xAPIConnector import APIClient
@@ -8,6 +10,8 @@ from xapi.xAPIConnector import DEFAULT_XAPI_ADDRESS
 
 # DEFAULT_XAPI_PORT = 5112 # Use 5124 for DEMO
 # DEFUALT_XAPI_STREAMING_PORT = 5113 # Use 5125 for DEMO
+def fromtimestamp(x):
+    return dt.datetime.fromtimestamp(x, )
 
 class XRest(APIClient):
     """[summary]
@@ -66,12 +70,21 @@ class XRest(APIClient):
     # PLATFORM INFO 
     # ====================== #
     def get_server_time(self):
-        """[summary]
+        """Return Server Time in CET/CEST time zone. 
 
         Returns:
             [type]: [description]
         """
-        pass
+        server_time = self.commandExecute(
+                commandName = 'getServerTime'
+        )
+        if server_time.get('status') == True:
+            time_now = server_time.get('returnData')['time']/1000
+            london_time = timezone('Europe/London').localize(fromtimestamp(time_now))
+            ces_time = london_time.astimezone(timezone('Europe/Berlin'))
+            return ces_time.replace(tzinfo=None)
+        else:
+            self._print(server_time)
 
     def ping(self):
         """Returns ping to server. 
@@ -131,6 +144,28 @@ class XRest(APIClient):
             self._print(symbol_info)
             return None
 
+    def in_market_hours(self, symbol):
+        """Check if the current symbol is actively trading in its market hours.
+
+        Args:
+            symbol ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        trading_hours = self.commandExecute(
+            commandName='getTradingHours', 
+            arguments={
+                "symbols": [symbol]
+            }
+        )
+        if trading_hours.get('status') == True:
+            return trading_hours.get('returnData')
+        else:
+            self._print(trading_hours)
+            return None
+
+    
     def get_margin_requirement(self, ticker, size):
         margin_req = self.commandExecute(
             commandName='getMarginTrade', 
