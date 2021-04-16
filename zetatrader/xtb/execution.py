@@ -3,10 +3,13 @@
 
 # execution.py
 # @author: Darren 
+import time 
 import datetime as dt
 
 from zetatrader.event import FillEvent
 from zetatrader.execution_handler.execution import ExecutionHandler
+
+
 
 class XtbExecution(ExecutionHandler):
     """Order execution handler for XTB broker. 
@@ -52,19 +55,35 @@ class XtbExecution(ExecutionHandler):
         Args:
             event (OrderEvent): Object with order specific information
         """
+        order = None
         if event.type == 'ORDER':
             if event.isexit == True:
-                self.execute_market_exit(event=event)
+                order = self.execute_market_exit(event=event)
             elif event.order_type == 'MKT':
                 if event.direction == 'BUY':
-                    self.execute_market_buy(event=event)
+                    order = self.execute_market_buy(event=event)
                 elif event.direction == 'SELL':
-                    self.execute_market_sell(event=event)
+                    order = self.execute_market_sell(event=event)
             elif event.order_type == 'LIMIT':
                 if event.direction == 'BUY':
                     pass
                 elif event.direction == 'SELL':
                     pass
+        
+        if order is not None:
+            exe_status = order.get('requestStatus')
+            if self.order_status_dict[exe_status] == 'ACCEPTED':
+                pass
+            elif self.order_status_dict[exe_status] == 'REJECTED':
+                if order['message'] == 'Market closed':
+                    print(f'{event.symbol} market closed. Order added to pending')
+                    self.pending_orders.append(event)
+                else:
+                    raise order['message']                    
+            else:
+                raise 'Unknown Order Status'
+
+                print('Order Pending')
 
     def get_order_status(self, order_number):
         """[summary]
@@ -161,14 +180,12 @@ class XtbExecution(ExecutionHandler):
             order_number = send_order.get('returnData').get('order')
             order_status = self.get_order_status(order_number)
             exe_status = order_status.get('requestStatus')
-            if self.order_status_dict[exe_status] == 'ACCEPTED':
-                pass
-            elif self.order_status_dict[exe_status] == 'REJECTED':
-                # Store Order 
-                print('Order Rejected')
-                print('Order Event added pending orders')
-                self.pending_orders.append(event)
-                raise('Order Rejected')
+            while self.order_status_dict[exe_status] == 'PENDING':
+                time.sleep(0.25)
+                order_status = self.get_order_status(order_number)
+                exe_status = order_status.get('requestStatus')
+            else:
+                return order_status
 
     def execute_market_buy(self, event):
         """Executes a BUY MARKET order base on order details given in event.
@@ -208,15 +225,12 @@ class XtbExecution(ExecutionHandler):
             order_number = send_order.get('returnData').get('order')
             order_status = self.get_order_status(order_number)
             exe_status = order_status.get('requestStatus')
-            if self.order_status_dict[exe_status] == 'ACCEPTED':
-                pass
-            elif self.order_status_dict[exe_status] == 'REJECTED':
-                print('Order Rejected')
-                print('Order Event added pending orders')
-                self.pending_orders.append(event)
-                raise('Order Rejected')
-            elif self.order_status_dict[exe_status] == 'PENDING':
-                print('Order Pending')
+            while self.order_status_dict[exe_status] == 'PENDING':
+                time.sleep(0.25)
+                order_status = self.get_order_status(order_number)
+                exe_status = order_status.get('requestStatus')
+            else:
+                return order_status
     
     def execute_market_sell(self, event):
         """Executes a SELL MARKET order base on order details given in event.
@@ -255,16 +269,13 @@ class XtbExecution(ExecutionHandler):
             order_number = send_order.get('returnData').get('order')
             order_status = self.get_order_status(order_number)
             exe_status = order_status.get('requestStatus')
-            if self.order_status_dict[exe_status] == 'ACCEPTED':
-                pass
-            elif self.order_status_dict[exe_status] == 'REJECTED':
-                print('Order Rejected')
-                print('Order Event added pending orders')
-                self.pending_orders.append(event)
-                raise('Order Rejected')
-            elif self.order_status_dict[exe_status] == 'PENDING':
-                print('Order Pending')
-                return None
+            while self.order_status_dict[exe_status] == 'PENDING':
+                time.sleep(0.25)
+                order_status = self.get_order_status(order_number)
+                exe_status = order_status.get('requestStatus')
+            else:
+                return order_status
+            
 
 import os 
 # Import Own Modules
