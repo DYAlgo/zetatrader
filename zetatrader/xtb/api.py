@@ -5,8 +5,8 @@ from dateutil import tz
 from pytz import timezone
 
 # Import from own package
-from xapi.xAPIConnector import APIClient
-from xapi.xAPIConnector import DEFAULT_XAPI_ADDRESS
+from zetatrader.xtb.xAPIConnector import APIClient
+from zetatrader.xtb.xAPIConnector import DEFAULT_XAPI_ADDRESS
 
 # DEFAULT_XAPI_PORT = 5112 # Use 5124 for DEMO
 # DEFUALT_XAPI_STREAMING_PORT = 5113 # Use 5125 for DEMO
