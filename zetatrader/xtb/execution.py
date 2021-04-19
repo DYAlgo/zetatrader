@@ -82,7 +82,6 @@ class XtbExecution(ExecutionHandler):
                     raise order['message']                    
             else:
                 raise 'Unknown Order Status'
-
                 print('Order Pending')
 
     def get_order_status(self, order_number):
@@ -185,6 +184,8 @@ class XtbExecution(ExecutionHandler):
                 order_status = self.get_order_status(order_number)
                 exe_status = order_status.get('requestStatus')
             else:
+                print(f'{event.direction} {event.quantity} of {event.symbol}' 
+                    + f' order send to XTB')
                 return order_status
 
     def execute_market_buy(self, event):
@@ -230,6 +231,8 @@ class XtbExecution(ExecutionHandler):
                 order_status = self.get_order_status(order_number)
                 exe_status = order_status.get('requestStatus')
             else:
+                print(f'{event.direction} {event.quantity} of {event.symbol}' 
+                    + f' order send to XTB')
                 return order_status
     
     def execute_market_sell(self, event):
@@ -274,6 +277,8 @@ class XtbExecution(ExecutionHandler):
                 order_status = self.get_order_status(order_number)
                 exe_status = order_status.get('requestStatus')
             else:
+                print(f'{event.direction} {event.quantity} of {event.symbol}' 
+                    + f' order send to XTB')
                 return order_status
             
 
