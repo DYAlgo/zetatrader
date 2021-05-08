@@ -32,6 +32,25 @@ def moving_average_difference(ts, fast_period, slow_period):
     slow = ts.rolling(slow_period).mean()
     return fast - slow
 
+def moving_average_pct_difference(ts, fast_period, slow_period):
+    """Returns the percentage difference between the fast and slow moving 
+    average (i. e. how many percent is the the fast period moving average
+    above or below the slow moving average). This is useful for 
+    standardizing moving averages across difference time series. 
+
+    Args:
+        ts (pd.Series): pd.Series of our time series
+        fast_period (int): The fast moving average window
+        slow_period (int): The slow moving average window 
+
+    Returns:
+        [pd.Series]: pandas Series object of the product.
+    """
+    fast = ts.rolling(fast_period).mean()
+    slow = ts.rolling(slow_period).mean()
+    return (fast/slow) - 1 
+
+
 # ================= #
 # FILTER INDICATORS #
 # ================= #
