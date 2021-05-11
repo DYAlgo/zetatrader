@@ -142,6 +142,7 @@ class TradingStats:
         curve.set_index('datetime', inplace=True)
         curve['returns'] = curve['total'].pct_change()
         curve['equity_curve'] = (1.0+curve['returns']).cumprod()
+        curve['rolling 25N volatility'] = curve['returns'].rolling(2).std()
         try:
             # Try to find and append benchmark
             bmk = self.compute_benchmark_return(
@@ -234,7 +235,7 @@ class TradingStats:
         """
         # Create figure 
         fig = plt.figure(constrained_layout=True, figsize=(15, 12))
-        gs = fig.add_gridspec(5, 3)
+        gs = fig.add_gridspec(7, 3)
 
         # Plot the return v benchmark
         ax1 = fig.add_subplot(gs[0:2, :])
@@ -250,6 +251,12 @@ class TradingStats:
         ax2 = fig.add_subplot(gs[2:4, :])
         ax2.fill_between(self.equity_curve.index, 0, self.equity_curve['underwater']
             , facecolor='red'
+        )
+
+        # Plot rolling return volatility
+        ax3 = fig.add_subplot(gs[4:6, :])
+        ax3.plot(self.equity_curve.index, 
+            self.equity_curve['rolling 25N volatility']
         )
 
         # Plot performance metric table
@@ -268,9 +275,9 @@ class TradingStats:
         cell_text = []
         for row in range(len(df)):
             cell_text.append(df.iloc[row])
-        ax3 = fig.add_subplot(gs[4:, :])
-        ax3.table(cellText=cell_text, colLabels=list(df.columns), loc='center')
-        ax3.axis('off')
+        ax4 = fig.add_subplot(gs[-1:, :])
+        ax4.table(cellText=cell_text, colLabels=list(df.columns), loc='center')
+        ax4.axis('off')
         plt.show()
 
     # ========================
