@@ -17,7 +17,7 @@ class XtbSession:
     event-driven engine.
     """
     def __init__(self, symbol_list, heartbeat, price_handler, execution_handler 
-            , portfolio, strategy, book, money_management, connection, other_parameters={}):
+            , portfolio, strategy, connection, other_parameters={}):
         self.symbol_list = symbol_list
         self.heartbeat = heartbeat
         self.events = queue.Queue()
@@ -27,8 +27,6 @@ class XtbSession:
         self.execution_handler = execution_handler
         self.portfolio = portfolio
         self.strategy = strategy
-        self.book = book
-        self.money_management = money_management
         self.other_parameters = other_parameters
 
         self.signals = 0
@@ -98,8 +96,7 @@ class XtbSession:
         """
         return self.portfolio(
             bars = self.price_handler, events = self.events
-            , session_type = 'live', book = self.book
-            , money_management = self.money_management 
+            , connection = self.connection
         )
 
     def _construct_execution_handler(self):
@@ -122,8 +119,8 @@ class XtbSession:
         """
         self.price_handler = self._construct_price_handler()
         self.strategy = self._construct_strategy()
-        self.book = self._construct_book()
-        self.money_management = self._construct_money_management()
+        # self.book = self._construct_book()
+        # self.money_management = self._construct_money_management()
         self.portfolio = self._construct_portfolio()
         self.execution_handler = self._construct_execution_handler()
 
