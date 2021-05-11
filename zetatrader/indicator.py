@@ -4,6 +4,36 @@ import numpy as np
 from numpy_ext import rolling_apply
 
 # ======================= #
+# PRICE ADJUSTMENT        #
+# ======================= #
+def remove_variance_effect(ts, alpha, return_std=False):
+    """Removes the variance effect from the first difference of 
+    given ts series and restore the log-time series indexed at 1000. 
+
+    Args:
+        ts ([type]): Time Series to remove variance effect
+        alpha ([type]): alpha to apply to exponential average of standard dev
+        return_std (bool, optional): Log price after removing volatility or 
+            a tuple with log-price and the return standard deviation  
+
+    Returns:
+        [type]: [description]
+    """
+    rtn = np.log(ts)-np.log(ts.shift(1)) 
+    # Compute rolling volatility 
+    rtn_sd = rtn.ewm(alpha=alpha).std()
+    # rtn_mean = rtn.ewm(alpha=alpha).mean()
+    rtn = rtn/rtn_sd
+    
+    # Restore time series as log(ts)
+    rtn.iloc[1] = 1000 # np.log(ts.iloc[1])
+    if return_std:
+        return (rtn.cumsum(), rtn_sd)
+    else:
+        return rtn.cumsum()
+
+
+# ======================= #
 # DESCRIPTIVE INDICATORS  #
 # ======================= #
 def percent2max(ts, window):
@@ -11,7 +41,7 @@ def percent2max(ts, window):
     return abs(rollmax/ts -1)
 
 def percent2min(ts, window):
-    rollmin = ts.rolling(window).max()
+    rollmin = ts.rolling(window).min()
     return abs(rollmin/ts -1)
 
 # ================= #
@@ -50,6 +80,10 @@ def moving_average_pct_difference(ts, fast_period, slow_period):
     slow = ts.rolling(slow_period).mean()
     return (fast/slow) - 1 
 
+def moving_average_openclose_pct_difference(open_px, close_px, period):
+    open_avg = open_px.rolling(period).mean()
+    close_avg = close_px.rolling(period).mean()
+    return (close_avg/open_avg) - 1
 
 # ================= #
 # FILTER INDICATORS #
