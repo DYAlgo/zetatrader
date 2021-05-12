@@ -170,7 +170,7 @@ def thresh_label(df, upper, lower, n):
         elif down<up:
             return (-1, down, df[down])
         else:
-            return (0, n, df[n])
+            return (0, n, df[-1])
 
 def asym_thresh_label(df, tgt_long, tgt_short, stop_long, stop_short, n):
     """Label triple barrier based on which directional trade will hit its 
@@ -206,7 +206,7 @@ def asym_thresh_label(df, tgt_long, tgt_short, stop_long, stop_short, n):
                 (long_out[0]==-1 and short_out[0]==1)or
                 (long_out[0]==0 and short_out[0]==1) or
                 (long_out[0]==-1 and short_out[0]==0)):
-                return (0, n, df[0])
+                return (0, n, df[-1])
             else:
                 print("Case not covered")
                 print(long_out, short_out)
