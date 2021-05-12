@@ -116,36 +116,36 @@ def time_to_ceil(close, thresh, base):
     observation that is larger than thresh. If none is found, return base 
 
     Args:
-        close ([type]): array of close price
+        close ([type]): array of close price from current bar to next n-bars
         thresh ([type]): threshold for close to beat
         base ([type]): default value to return if no value is above thresh
 
     Returns:
         int: The bar that first go above thresh or base if none 
     """
-    close = close >= thresh 
+    close = close[1:] >= thresh 
     if len(np.where(close)[0]) <1:
         return base
     else:
-        return np.where(close)[0][0]
+        return np.where(close)[0][0]+1
         
 def time_to_floor(close, thresh, base):
     """Returns the number of observations before seeing the first 
     observation that is less than thresh. If none is found, return base 
 
     Args:
-        close ([type]): array of close price
+        close ([type]): array of close price from current bar to next n-bars
         thresh ([type]): threshold for close to beat
         base ([type]): default value to return if no value is below thresh
 
     Returns:
         int: The bar that first go above thresh or base if none 
     """
-    close = close <= thresh 
+    close = close[1:] <= thresh 
     if len(np.where(close)[0]) <1:
         return base
     else:
-        return np.where(close)[0][0]
+        return np.where(close)[0][0]+1
 
 def thresh_label(df, upper, lower, n):
     """Returns tuple to indicate which barrier is touched and the number of 
@@ -160,17 +160,17 @@ def thresh_label(df, upper, lower, n):
     Returns:
         tuple: integer of which barrier is touched and number of bars to event.  
     """
-    if np.isnan(upper[0]) or np.isnan(lower[0]) or len(df)<n:
+    if np.isnan(upper[0]) or np.isnan(lower[0]):
         return np.nan
     else:
         up = time_to_ceil(df, upper[0], base=n)
         down = time_to_floor(df, lower[0], base=n)
         if up<down:
-            return (1, up)
+            return (1, up, df[up])
         elif down<up:
-            return (-1, down)
+            return (-1, down, df[down])
         else:
-            return (0, n)
+            return (0, n, df[n])
 
 def asym_thresh_label(df, tgt_long, tgt_short, stop_long, stop_short, n):
     """Label triple barrier based on which directional trade will hit its 
@@ -187,7 +187,7 @@ def asym_thresh_label(df, tgt_long, tgt_short, stop_long, stop_short, n):
     Returns:
         [type]: [description]
     """
-    if np.isnan(tgt_long[0]) or np.isnan(tgt_short[0]) or len(df)<n:
+    if np.isnan(tgt_long[0]) or np.isnan(tgt_short[0]) or (len(df)<2):
         return np.nan
     else:
         long_out = thresh_label(df, tgt_long[0:2], stop_long[0:2], n=n)
@@ -206,13 +206,12 @@ def asym_thresh_label(df, tgt_long, tgt_short, stop_long, stop_short, n):
                 (long_out[0]==-1 and short_out[0]==1)or
                 (long_out[0]==0 and short_out[0]==1) or
                 (long_out[0]==-1 and short_out[0]==0)):
-                return (0, n)
+                return (0, n, df[0])
             else:
                 print("Case not covered")
                 print(long_out, short_out)
 
-def triple_barrier_label(ts, tgt_long, tgt_short, stop_long, stop_short, width):
-    pass
+def legacy_triple_barrier_label(ts, tgt_long, tgt_short, stop_long, stop_short, width):
     # TODO: Wrap asym_thresh_label function for pandas dataframe
     label = rolling_apply(
         asym_thresh_label, width+1, *[ts, tgt_long, tgt_short
@@ -220,4 +219,37 @@ def triple_barrier_label(ts, tgt_long, tgt_short, stop_long, stop_short, width):
     )
     label = label[width:]
     label = np.append(label, np.full(width, np.nan))
+    return label
+
+def triple_barrier_label(ts, tgt_long, tgt_short, stop_long, stop_short, 
+        horizon, use_partials=False):    
+    # TODO: Wrap asym_thresh_label function for pandas dataframe
+    # TODO: Add lines to Error Check
+
+    width = horizon+1 
+    label = []
+
+    if use_partials == True:
+        for i in range(len(ts)):
+            if i+width < len(ts)-1 :
+                label.append(asym_thresh_label(
+                    ts[i:i+width], tgt_long[i:i+width], tgt_short[i:i+width], 
+                    stop_long[i:i+width], stop_short[i:i+width], horizon
+                ))
+            else:
+                label.append(asym_thresh_label(
+                    ts[i:], tgt_long[i:], tgt_short[i:], 
+                    stop_long[i:], stop_short[i:], horizon
+                ))
+    else:
+        for i in range(len(ts)):
+            if i+width < len(ts)-1 :
+                label.append(asym_thresh_label(
+                    ts[i:i+width], tgt_long[i:i+width], tgt_short[i:i+width], 
+                    stop_long[i:i+width], stop_short[i:i+width], horizon
+                ))
+            else:
+                label.append(np.full(horizon, np.nan))
+
+    label = np.array(label)
     return label
