@@ -6,7 +6,7 @@ from numpy_ext import rolling_apply
 # ======================= #
 # PRICE ADJUSTMENT        #
 # ======================= #
-def remove_variance_effect(ts, alpha, return_std=False):
+def remove_variance_effect(ts, alpha, use_ema=True, return_std=False):
     """Removes the variance effect from the first difference of
     given ts series and restore the log-time series indexed at 1000.
 
@@ -19,18 +19,31 @@ def remove_variance_effect(ts, alpha, return_std=False):
     Returns:
         [type]: [description]
     """
-    rtn = np.log(ts) - np.log(ts.shift(1))
-    # Compute rolling volatility
-    rtn_sd = rtn.ewm(alpha=alpha).std()
-    # rtn_mean = rtn.ewm(alpha=alpha).mean()
-    rtn = rtn / rtn_sd
+    if use_ema:
+        rtn = np.log(ts) - np.log(ts.shift(1))
+        # Compute rolling volatility
+        rtn_sd = rtn.shift(1).ewm(alpha=alpha).std()
+        rtn = (rtn) / rtn_sd
 
-    # Restore time series as log(ts)
-    rtn.iloc[1] = 1000  # np.log(ts.iloc[1])
-    if return_std:
-        return (rtn.cumsum(), rtn_sd)
+        # Restore time series as log(ts)
+        rtn.iloc[1] = np.log(ts.iloc[1])
+        if return_std:
+            return (rtn.cumsum(), rtn_sd)
+        else:
+            return rtn.cumsum()
     else:
-        return rtn.cumsum()
+        window = int(1 / alpha)
+        rtn = np.log(ts) - np.log(ts.shift(1))
+        # Compute rolling volatility
+        rtn_sd = rtn.shift(1).rolling(window).std()
+        rtn = (rtn) / rtn_sd
+
+        # Restore time series as log(ts)
+        rtn.iloc[1] = np.log(ts.iloc[1])
+        if return_std:
+            return (rtn.cumsum(), rtn_sd)
+        else:
+            return rtn.cumsum()
 
 
 # ======================= #
@@ -86,15 +99,15 @@ def moving_average_pct_difference(ts, fast_period, slow_period):
 
 def moving_average_openclose_pct_difference(open_px, close_px, period):
     """Compute the difference between average close and average open as
-    a percentage of the average open. 
+    a percentage of the average open.
 
     Args:
         open_px (pd.Series): pandas Series of open price
         close_px (pd.Series): pandas Series of close price
-        period (int): The rolling period to use 
+        period (int): The rolling period to use
 
     Returns:
-        [pd.Series]: A pandas Series the open close percentage series. 
+        [pd.Series]: A pandas Series the open close percentage series.
     """
     open_avg = open_px.rolling(period).mean()
     close_avg = close_px.rolling(period).mean()
@@ -120,13 +133,13 @@ def signal2noise(signal, noise, window):
 
 
 def comb_signal2noise(signal, noise, windows):
-    """Compute combine signal to noise ratio by computing 
-    product of all signal-to-noise ratios. 
+    """Compute combine signal to noise ratio by computing
+    product of all signal-to-noise ratios.
 
     Args:
-        signal (pd.Series): Series of signal 
-        noise (pd.Series): Series of noise 
-        windows (int): Rolling window size 
+        signal (pd.Series): Series of signal
+        noise (pd.Series): Series of noise
+        windows (int): Rolling window size
 
     Returns:
         [pd.Series]: Series of signal-to-noise
