@@ -27,6 +27,7 @@ class FuturesPortfolio(AbstractPortfolio):
         self.position_sizing_dict = {
             "exit": self.exit_order,
             "naive_order": self.naive_order,
+            "percent_total_equity_order" : self.percent_total_equity_order,
             "percent_equity_risk": self.percent_equity_risk_order,
         }
 
@@ -305,14 +306,19 @@ class FuturesPortfolio(AbstractPortfolio):
     # SAVE PORTFOLIO
     # PERFORMANCE
     # ======================
+    def get_equity_curve(self):
+        """Returns equity curve of current portfolio
+        """
+        return self.all_holdings
+
     def save_portfolio_performance(self):
         """Save all portfolio level performance statistics through
         performance object. These are:
         1. equity curve record
         2. trade log.
         """
-        self.performance.save_equity_curve(self.all_holdings)
-        self.performance.save_trade_log()
+        return(self.performance.save_equity_curve(self.all_holdings),
+            self.performance.save_trade_log())
 
     # ==================================================== #
     # POSITION SIZERS
@@ -362,7 +368,7 @@ class FuturesPortfolio(AbstractPortfolio):
                 direction="BUY",
                 isexit=False,
             )
-        elif direction == " SHORT":
+        elif direction == "SHORT":
             return OrderEvent(
                 symbol=signal.symbol,
                 order_type="MKT",
@@ -371,7 +377,38 @@ class FuturesPortfolio(AbstractPortfolio):
                 isexit=False,
             )
         else:
-            raise ("Incorrect combination of for Naive Order")
+            raise ("Incorrect direction from SignalEvent")
+
+    def percent_total_equity_order(self, signal):
+        symbol = signal.symbol
+        direction = signal.signal_type
+        lot_size = self.symbol_info[symbol]["lotMin"]
+        close = self.bars.get_latest_bar_value(
+            symbol=symbol, val_type="close_price"
+        )
+        contract_value = close * self.symbol_info[symbol]["contract size"] 
+        qty = (self.total_equity * signal.strength)/contract_value
+        qty = self.round_down(qty, lot_size=lot_size)
+
+        if direction == "LONG":
+            # Long Order
+            return OrderEvent(
+                symbol=signal.symbol,
+                order_type="MKT",
+                quantity=abs(qty),
+                direction="BUY",
+                isexit=False,
+            )
+        elif direction == "SHORT":
+            return OrderEvent(
+                symbol=signal.symbol,
+                order_type="MKT",
+                quantity=abs(qty),
+                direction="SELL",
+                isexit=False,
+            )
+        else:
+            raise ("Incorrect direction from SignalEvent")
 
     def percent_equity_risk_order(self, signal):
         """Create order size such that your exiting at your stop loss
