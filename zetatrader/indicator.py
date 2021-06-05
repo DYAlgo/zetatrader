@@ -117,19 +117,35 @@ def moving_average_openclose_pct_difference(open_px, close_px, period):
 # ================= #
 # FILTER INDICATORS #
 # ================= #
-def signal2noise(signal, noise, window):
-    """Signal to Noise Ratio based on the formula of
-    variance between signal and noise.
+# def signal2noise(signal, noise, window):
+#     """Signal to Noise Ratio based on the formula of
+#     variance between signal and noise.
+
+#     Args:
+#         signal (pd.Series): signal series
+#         noise (pd.Series): noise series
+#         window (int): window for rolling variance
+
+#     Returns:
+#         [pd.Series]: SNR series
+#     """
+#     return signal.rolling(window).var() / noise.rolling(window).var()
+def signal2noise(ts, window):
+    """Returns rolling signal-to-noise ratio computed from dividing return
+    with the sum aboslute return of each bar between window given.
 
     Args:
-        signal (pd.Series): signal series
-        noise (pd.Series): noise series
-        window (int): window for rolling variance
+        ts ([type]): pandas Series
+        window ([type]): Window to compute return and noise
 
     Returns:
-        [pd.Series]: SNR series
+        [type]: [description]
     """
-    return signal.rolling(window).var() / noise.rolling(window).var()
+    sig = abs(np.log(ts) - np.log(ts.shift(window)))
+    diff = abs(np.log(ts) - np.log(ts.shift(1)))
+    noise = diff.rolling(window).sum()
+    snr = sig / noise
+    return snr
 
 
 def comb_signal2noise(signal, noise, windows):
