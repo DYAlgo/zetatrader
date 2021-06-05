@@ -6,11 +6,12 @@
 
 import os
 import os.path
+import numpy as np
 import pandas as pd
 import pkg_resources
 import seaborn as sns
 import matplotlib.pyplot as plt
-from os import listdir
+from os import listdir, times
 from os.path import isdir, join
 from scipy.stats import kurtosis, skew
 
@@ -159,7 +160,7 @@ class TradingStats:
     # ========================
     # POST-BACKTEST STATISTICS
     # ========================
-    def create_equity_curve_dataframe(self, all_holdings):
+    def create_equity_curve_dataframe(self, all_holdings, timescale):
         """Creates a pandas DataFrame from the all_holdings
         list of dictionaries.
 
@@ -171,9 +172,14 @@ class TradingStats:
         curve["returns"] = curve["total"].pct_change()
         curve["equity_curve"] = (1.0 + curve["returns"]).cumprod()
         curve["rolling 25N volatility"] = curve["returns"].rolling(2).std()
+
+        # Upsample to timescale
+        curve = curve.resample(timescale).last().dropna()
+
         try:
             # Try to find and append benchmark
             bmk = self.compute_benchmark_return(curve.index[0], curve.index[-1])
+            bmk = bmk.resample(timescale).last().dropna()
             # attached benchmark and compute path
             curve = curve.merge(bmk, how="left", on="datetime")
             curve["benchmark"].iloc[0] = 0.0
@@ -203,12 +209,61 @@ class TradingStats:
 
         return benchmark_rtn
 
+    def calculate_trading_stats(self, equity_curve):
+        """Returns a dictionary of consisting of annualized return,
+        annualized volatility, sharpe ratio, sortino ratio, MAR ratio,
+        Max Drawdown, length of maximum drawdown, % of positive days
+
+        Args:
+            equity_curve ([type]): [description]
+            timescale ([type]): [description]
+        """
+        metrics = {}
+        metrics["Annualized Return %"] = self.calculate_annual_return(
+            equity_curve["returns"]
+        )
+        metrics["Annualized Volatility %"] = self.calculate_annual_volatility(
+            equity_curve["returns"]
+        )
+        metrics["Max Drawdown"] = self.calculate_max_drawdown(
+            equity_curve["underwater"]
+        )
+        metrics["Sharpe Ratio"] = self.calculate_sharpe_ratio(
+            metrics["Annualized Return %"], metrics["Annualized Volatility %"]
+        )
+        metrics["Sortino Ratio"] = self.calculate_sortino_ratio(equity_curve["returns"])
+        metrics["MAR"] = self.calculate_mar(
+            metrics["Annualized Return %"], metrics["Max Drawdown"]
+        )
+        metrics["Return Skew"] = self.calculate_return_skew(equity_curve["returns"])
+        metrics["Return Kurtosis"] = self.calculate_return_kurtosis(
+            equity_curve["returns"]
+        )
+
+        return metrics
+
+    def calculate_portfolio_performance(self, holdings_data, timescale="1D"):
+        """Compute both the equity curve data and portfolio performance metrices.
+
+        Args:
+            equity_curve ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        self.create_equity_curve_dataframe(holdings_data, timescale)
+        portfolio_metrics = self.calculate_trading_stats(self.equity_curve)
+
+        # Save performance to csv file
+        if self.tearsheet:
+            self.plot_tearsheet()
+        return (self.equity_curve, portfolio_metrics)
+
     # ========================
     # SAVE PERFORMANCE STATS
     # ========================
-    def save_equity_curve(self, all_holdings):
-        """Save the output of equity curve dataframe as csv."""
-        self.create_equity_curve_dataframe(all_holdings)
+    def save_equity_curve(self):
+        """Saves of equity curve dataframe as csv."""
         while True:
             if os.path.isfile(self.output_path + "/equity/%s.csv" % self.output_number):
                 self.output_number += 1
@@ -222,8 +277,6 @@ class TradingStats:
                     + r"/equity/%s.csv" % self.output_number
                 )
                 break
-        if self.tearsheet:
-            self.plot_tearsheet()
 
     def save_trade_log(self):
         """Save the trade log dataframe as a csv"""
@@ -242,6 +295,7 @@ class TradingStats:
                     + r"/tradelog/%s.csv" % self.output_number
                 )
                 break
+        return self.trade_log
 
     # ========================
     # PLOT TEARSHEET
@@ -281,67 +335,37 @@ class TradingStats:
         ax3.plot(self.equity_curve.index, self.equity_curve["rolling 25N volatility"])
         ax3.set_title("rolling 25N volatility")
 
-        # Plot performance metric table
-        df = pd.DataFrame(
-            {
-                "Annual Return %": [self.cal_annualized_return(self.equity_curve)],
-                "Sharpe Ratio": [self.cal_sharpe_ratio(self.equity_curve)],
-                "Max Drawdown %": [self.cal_max_drawdown(self.equity_curve)],
-                "Gain to Pain": [self.cal_gain_to_pain(self.equity_curve)],
-                "Skew": [self.cal_return_skew(self.equity_curve)],
-                "Kurtosis": [self.cal_return_kurtosis(self.equity_curve)],
-                "Sortino": [self.cal_sortino_ratio(self.equity_curve)],
-            }
-        )
-
-        cell_text = []
-        for row in range(len(df)):
-            cell_text.append(df.iloc[row])
-        ax4 = fig.add_subplot(gs[-1:, :])
-        ax4.table(cellText=cell_text, colLabels=list(df.columns), loc="center")
-        ax4.axis("off")
         plt.tight_layout()
         plt.show()
 
     # ========================
     # METRIC CALCULATORS
     # ========================
-    def cal_annualized_return(self, curve):
-        """Computes the annualize return.
+    def calculate_annual_return(self, daily_returns):
+        # Assumes each bar represents a trading day
+        return round(daily_returns.mean() * 252 * 100, 5)
 
-        Args:
-            curve ([type]): equity curve
-        """
-        return round(
-            (
-                (curve["equity_curve"].iloc[-1] - 1)
-                / (
-                    curve["equity_curve"].index[-1] - curve["equity_curve"].index[0]
-                ).days
-            )
-            * 365 * 100,
-            4,
-        )
+    def calculate_annual_volatility(self, daily_returns):
+        return round(daily_returns.std() * np.sqrt(252) * 100, 5)
 
-    def cal_sharpe_ratio(self, curve):
-        return round(((curve["returns"]).mean() / (curve["returns"]).std()), 4)
+    def calculate_sharpe_ratio(self, avg_return, avg_volatility):
+        return round(avg_return / avg_volatility, 4)
 
-    def cal_max_drawdown(self, curve):
-        return round(100 * min(curve["underwater"].dropna()), 4)
+    def calculate_max_drawdown(self, underwater_ts):
+        return round(100 * abs(min(underwater_ts.dropna())), 4)
 
-    def cal_gain_to_pain(self, curve):
-        curve = curve.dropna()
-        return round(
-            (curve["equity_curve"].iloc[-1] - 1) / (-min(curve["underwater"])), 4
-        )
+    def calculate_mar(self, total_return, max_drawdown):
+        return round(total_return / max_drawdown)
 
-    def cal_return_skew(self, curve):
-        return round(skew(curve["returns"].dropna()), 3)
+    def calculate_gain_to_pain(self, equity_ts, underwater_ts):
+        equity_ts = equity_ts.dropna()
+        return round((equity_ts.iloc[-1] - 1) / (-min(underwater_ts)), 4)
 
-    def cal_return_kurtosis(self, curve):
-        return round(kurtosis(curve["returns"].dropna()), 3)
+    def calculate_return_skew(self, return_ts):
+        return round(skew(return_ts.dropna()), 3)
 
-    def cal_sortino_ratio(self, curve):
-        return round(
-            curve["returns"].mean() / curve[curve["returns"] < 0]["returns"].std(), 4
-        )
+    def calculate_return_kurtosis(self, return_ts):
+        return round(kurtosis(return_ts.dropna()), 3)
+
+    def calculate_sortino_ratio(self, return_ts):
+        return round(return_ts.mean() / return_ts[return_ts < 0].std(), 4)
