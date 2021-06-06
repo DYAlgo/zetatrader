@@ -7,7 +7,6 @@ try:
     import Queue as queue
 except ImportError:
     import queue
-import time
 
 
 class TradingSession(object):
@@ -127,7 +126,7 @@ class TradingSession(object):
         self.execution_handler = self.execution_handler(
             self.events,
             self.price_handler,
-            **self.backtest_parameters.get("execution_param", {})
+            **self.backtest_parameters.get("execution_parameters", {})
         )
 
         print(
@@ -188,10 +187,12 @@ class TradingSession(object):
             equity_curve,
             portfolio_metrics,
         ) = self.performance.calculate_portfolio_performance(equity_curve)
-        print(pd.Series(portfolio_metrics))
+        print(portfolio_metrics)
 
         # Analyze and Store trade data
-        trade_data = self.performance.save_trade_log()
+        trade_data = self.portfolio.get_trade_log()
+        self.performance.save_equity_curve(equity_curve)
+        self.performance.save_trade_log(trade_data)
 
         return (equity_curve, trade_data, portfolio_metrics)
 
