@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+# # -*- coding: utf-8 -*-
 import numpy as np
+import pandas as pd
 from math import floor
 from zetatrader.event import OrderEvent
 from zetatrader.portfolio.simulated_portfolio import AbstractPortfolio
@@ -15,19 +18,18 @@ class FuturesPortfolio(AbstractPortfolio):
         self.total_equity = initial_capital
         self.symbol_info = symbol_info
         # Portfolio Tracker
+        self.trade_log = []
         self.current_positions = self.construct_current_position()
         self.current_holdings = self.construct_current_holdings()
-        # self.current_notionals = self.construct_current_notionals()
         self.current_margins = self.construct_current_margins()
         self.all_positions = self.construct_all_positions()
         self.all_holdings = self.construct_all_holdings()
-        # self.all_notionals = self.construct_all_notionals()
         self.all_margins = self.construct_all_margins()
         # Position Sizing Tracker
         self.position_sizing_dict = {
             "exit": self.exit_order,
             "naive_order": self.naive_order,
-            "percent_total_equity_order" : self.percent_total_equity_order,
+            "percent_total_equity_order": self.percent_total_equity_order,
             "percent_equity_risk": self.percent_equity_risk_order,
         }
 
@@ -62,10 +64,8 @@ class FuturesPortfolio(AbstractPortfolio):
         in terms of margin requirements of our positions. This will be similar
         to the direction times current margin.
         """
-        d = dict((k, v) for k, v in [(s, 0.0) for s in self.symbol_list])
-        d["commission"] = 0.0
-        d["cash"] = self.total_equity
-        d["total"] = self.total_equity
+        d = dict((k, v) for k, v in [(s + "_margin", 0.0) for s in self.symbol_list])
+        d["free_margin"] = self.total_equity
         return d
 
     def construct_current_notional(self):
@@ -108,14 +108,6 @@ class FuturesPortfolio(AbstractPortfolio):
         d["total"] = self.total_equity
         return [d]
 
-    def construct_all_notional(self):
-        """
-        Constructs a list to store the notional value across backtest period.
-        """
-        # Add code to get position from broker if trading session is live
-        d = dict((k, v) for k, v in [(s, 0.0) for s in self.symbol_list])
-        return [d]
-
     # ==================================================== #
     # Update Portfolio Index, Value, and Position
     # ==================================================== #
@@ -136,11 +128,8 @@ class FuturesPortfolio(AbstractPortfolio):
         self.all_positions.append(self.current_positions[s])
 
         # Update Margins
-        dm = dict((k, v) for k, v in [(s, 0) for s in self.symbol_list])
-        dm["cash"] = self.current_margins["cash"]
-        dm["total"] = self.current_margins["cash"]
-        dm["commission"] = self.current_margins["commission"]
-        dm["datetime"] = latest_datetime
+        dm = dict((k, v) for k, v in [(s + "_margin", 0) for s in self.symbol_list])
+        dm["free_margin"] = self.current_holdings["cash"]
 
         # Update Holdings
         dh = dict((k, v) for k, v in [(s, 0) for s in self.symbol_list])
@@ -151,25 +140,19 @@ class FuturesPortfolio(AbstractPortfolio):
         dh["total"] = self.current_holdings["cash"]
         dh["total_notional"] = 0
 
-        # Update Notional
-        dn = dict((k, v) for k, v in [(s, 0) for s in self.symbol_list])
-        dn["datetime"] = latest_datetime
-        dn["total"] = self.current_margins["cash"]
-
         for symbol in self.symbol_list:
             volume = self.current_positions[symbol]
             last_price = self.bars.get_latest_bar_value(symbol, "close_price")
             if np.isnan(last_price):
                 last_price = 0
             contract_size = self.symbol_info[symbol]["contract size"]
-            margin_requirements = 1 / self.symbol_info[symbol]["leverage"]
             # exposure = 1 if volume > 0 else (-1 if volume < 0 else 0)
             notional_value = contract_size * last_price * volume
-            new_margin_req = abs(notional_value * margin_requirements)
+            new_margin_req = abs(notional_value / self.symbol_info[symbol]["leverage"])
 
             # Add to margin
-            dm[symbol] = new_margin_req
-            dm["total"] += new_margin_req
+            dm[symbol + "_margin"] = new_margin_req
+            dm["free_margin"] += notional_value - new_margin_req
 
             # Add to Holdings
             # Change in Total should be current notional - previous notional
@@ -181,8 +164,8 @@ class FuturesPortfolio(AbstractPortfolio):
         self.current_holdings = dh
         self.current_margins = dm
         # Save a copy of holdings and margins for performance measurement
-        self.all_holdings.append(dh.copy())
-        self.all_margins.append(dm.copy())
+        self.all_holdings.append({**dh, **dm}.copy())
+        # self.all_margins.append(dm.copy())
 
     # ========================= #
     # SIGNAL HANDLING
@@ -224,9 +207,8 @@ class FuturesPortfolio(AbstractPortfolio):
         """
         if event.type == "FILL":
             self.update_positions_from_fill(event)
-            self.update_margins_from_fill(event)
             self.update_holdings_from_fill(event)
-            self.performance.update_trade_log(event)
+            self.update_trade_log_from_fill(event)
 
     def update_positions_from_fill(self, fill):
         """
@@ -278,47 +260,37 @@ class FuturesPortfolio(AbstractPortfolio):
             + f" Order Filled on {self.bars.get_datetime()} at {fill_cost}"
         )
 
-    def update_margins_from_fill(self, fill):
-        """Updates the margins our portfolio is current holding based
-        on newly updated current positions.
+    def update_trade_log_from_fill(self, fill):
+        """Adds a record of order filled to trade log.
 
         Args:
-            fill ([type]): [description]
-        """
-        symbol = fill.symbol
-        curr_position = self.current_positions[symbol]
-        contract_size = self.symbol_info[symbol]["contract size"]
-        prior_margin_req = self.current_margins[symbol]
-        margin_requirements = 1 / self.symbol_info[symbol]["leverage"]
-        new_margin_req = abs(
-            curr_position * contract_size * margin_requirements * fill.fill_cost
-        )
+            fill (FillEvent): Fill object with execution details.
 
-        self.current_margins[symbol] = new_margin_req
-        self.current_margins["cash"] -= (
-            new_margin_req - prior_margin_req + fill.commission
+        Returns:
+            None
+        """
+        self.trade_log.append(
+            {
+                "timestamp": fill.timeindex,
+                "symbol": fill.symbol,
+                "quantity": fill.quantity,
+                "direction": fill.direction,
+                "price": fill.fill_cost,
+                "commission": fill.commission,
+            }
         )
-        self.current_margins["commission"] -= fill.commission
-        self.current_margins["total"] -= fill.commission
-        self.total_equity = self.current_margins["total"]
+        # TODO: Add logging
 
     # ======================
-    # SAVE PORTFOLIO
-    # PERFORMANCE
+    # PORTFOLIO DATA GETTER
     # ======================
     def get_equity_curve(self):
-        """Returns equity curve of current portfolio
-        """
-        return self.all_holdings
+        """Returns equity curve of current portfolio"""
+        return pd.DataFrame(self.all_holdings)
 
-    def save_portfolio_performance(self):
-        """Save all portfolio level performance statistics through
-        performance object. These are:
-        1. equity curve record
-        2. trade log.
-        """
-        return(self.performance.save_equity_curve(self.all_holdings),
-            self.performance.save_trade_log())
+    def get_trade_log(self):
+        """Returns trade_log."""
+        return pd.DataFrame(self.trade_log)
 
     # ==================================================== #
     # POSITION SIZERS
@@ -383,11 +355,9 @@ class FuturesPortfolio(AbstractPortfolio):
         symbol = signal.symbol
         direction = signal.signal_type
         lot_size = self.symbol_info[symbol]["lotMin"]
-        close = self.bars.get_latest_bar_value(
-            symbol=symbol, val_type="close_price"
-        )
-        contract_value = close * self.symbol_info[symbol]["contract size"] 
-        qty = (self.total_equity * signal.strength)/contract_value
+        close = self.bars.get_latest_bar_value(symbol=symbol, val_type="close_price")
+        contract_value = close * self.symbol_info[symbol]["contract size"]
+        qty = (self.total_equity * signal.strength) / contract_value
         qty = self.round_down(qty, lot_size=lot_size)
 
         if direction == "LONG":

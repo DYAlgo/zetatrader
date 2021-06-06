@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # # -*- coding: utf-8 -*-
 
-# performance.py
-# Darren Jun Yi Yeap V0.1
+# trading_stats.py
+# Darren Yeap
 
 import os
 import os.path
@@ -35,11 +35,9 @@ class TradingStats:
             benchmark {str} -- Benchmark to compare to. Defaults to 'SPY'
         """
         self.output_path = output_path
-        self.equity_curve = pd.DataFrame()
         self.benchmark = benchmark
         self.tearsheet = tearsheet
         self.signal_log = self.construct_signal_log()
-        self.trade_log = self.construct_trade_log()
 
         self.create_output_folders()
         self.output_number = 1
@@ -75,28 +73,6 @@ class TradingStats:
 
         return signal_log
 
-    def construct_trade_log(self):
-        """
-        This constructs a trade log for trade by trade record keeping
-        and trade validation purpose
-        """
-        trade_log = pd.DataFrame(
-            {
-                "timestamp": [],
-                "symbol_id": [],
-                "quantity": [],
-                "direction": [],
-                "price": [],
-                "commission": [],
-            }
-        )
-
-        trade_log = trade_log[
-            ["timestamp", "symbol_id", "quantity", "direction", "price", "commission"]
-        ]
-
-        return trade_log
-
     def create_output_folders(self):
         """Check if the given path has the needed output folders. It it is not
         found, create one.
@@ -125,49 +101,17 @@ class TradingStats:
         self.output_path = script_path
         print("None output file given.\nOutput file set as %s" % script_path)
 
-    # ========================= #
-    # BOOKEEPING FUNCTIONS
-    # ========================= #
-    def update_trade_log(self, fill):
-        """Takes an fill event and adds the order into our trade log for
-        record keeping.
-
-        Arguments:
-            fill {obj} -- Fill Event
-        """
-        if fill.type == "FILL":
-            trade_entry = pd.Series(
-                [
-                    fill.timeindex,
-                    fill.symbol,
-                    fill.quantity,
-                    fill.direction,
-                    fill.fill_cost,
-                    fill.commission,
-                ],
-                index=[
-                    "timestamp",
-                    "symbol_id",
-                    "quantity",
-                    "direction",
-                    "price",
-                    "commission",
-                ],
-            )
-
-            self.trade_log = self.trade_log.append(trade_entry, ignore_index=True)
-
     # ========================
     # POST-BACKTEST STATISTICS
     # ========================
-    def create_equity_curve_dataframe(self, all_holdings, timescale):
+    def create_equity_curve_dataframe(self, holdings_data, timescale):
         """Creates a pandas DataFrame from the all_holdings
         list of dictionaries.
 
         Arguments:
             all_holdings {list} -- list of daily holdings dictionary
         """
-        curve = pd.DataFrame(all_holdings)
+        curve = pd.DataFrame(holdings_data)
         curve.set_index("datetime", inplace=True)
         curve["returns"] = curve["total"].pct_change()
         curve["equity_curve"] = (1.0 + curve["returns"]).cumprod()
@@ -193,7 +137,7 @@ class TradingStats:
             print(f"Benchmark {self.benchmark} not found!")
         else:
             # Update curve
-            self.equity_curve = curve
+            return curve
 
     def compute_benchmark_return(self, start_dt, end_dt):
         # Computes return path for benchmark under same time period
@@ -240,7 +184,7 @@ class TradingStats:
             equity_curve["returns"]
         )
 
-        return metrics
+        return pd.Series(metrics)
 
     def calculate_portfolio_performance(self, holdings_data, timescale="1D"):
         """Compute both the equity curve data and portfolio performance metrices.
@@ -251,24 +195,25 @@ class TradingStats:
         Returns:
             [type]: [description]
         """
-        self.create_equity_curve_dataframe(holdings_data, timescale)
-        portfolio_metrics = self.calculate_trading_stats(self.equity_curve)
+        holdings_data = self.create_equity_curve_dataframe(holdings_data, timescale)
+        portfolio_metrics = self.calculate_trading_stats(holdings_data)
 
         # Save performance to csv file
         if self.tearsheet:
-            self.plot_tearsheet()
-        return (self.equity_curve, portfolio_metrics)
+            self.plot_tearsheet(holdings_data)
+
+        return (holdings_data, portfolio_metrics)
 
     # ========================
     # SAVE PERFORMANCE STATS
     # ========================
-    def save_equity_curve(self):
+    def save_equity_curve(self, equity_curve):
         """Saves of equity curve dataframe as csv."""
         while True:
             if os.path.isfile(self.output_path + "/equity/%s.csv" % self.output_number):
                 self.output_number += 1
             else:
-                self.equity_curve.to_csv(
+                equity_curve.to_csv(
                     self.output_path + r"/equity/%s.csv" % self.output_number
                 )
                 print(
@@ -278,7 +223,7 @@ class TradingStats:
                 )
                 break
 
-    def save_trade_log(self):
+    def save_trade_log(self, trade_log):
         """Save the trade log dataframe as a csv"""
         while True:
             if os.path.isfile(
@@ -286,7 +231,7 @@ class TradingStats:
             ):
                 self.output_number += 1
             else:
-                self.trade_log.to_csv(
+                trade_log.to_csv(
                     self.output_path + r"/tradelog/%s.csv" % self.output_number
                 )
                 print(
@@ -295,12 +240,12 @@ class TradingStats:
                     + r"/tradelog/%s.csv" % self.output_number
                 )
                 break
-        return self.trade_log
+        return trade_log
 
     # ========================
     # PLOT TEARSHEET
     # ========================
-    def plot_tearsheet(self):
+    def plot_tearsheet(self, equity_curve):
         """Plots a tearsheet of the trading performance.
 
         Args:
@@ -314,25 +259,23 @@ class TradingStats:
         # Plot the return v benchmark
         ax1 = fig.add_subplot(gs[0:2, :])
         ax1.plot(
-            self.equity_curve.index,
-            self.equity_curve["equity_curve"],
+            equity_curve.index,
+            equity_curve["equity_curve"],
             label="Equity Curve",
         )
-        ax1.plot(
-            self.equity_curve.index, self.equity_curve["benchmark"], label="Benchmark"
-        )
+        ax1.plot(equity_curve.index, equity_curve["benchmark"], label="Benchmark")
         ax1.legend()
 
         # Plot underwater curve
         ax2 = fig.add_subplot(gs[2:4, :], sharex=ax1)
         ax2.fill_between(
-            self.equity_curve.index, 0, self.equity_curve["underwater"], facecolor="red"
+            equity_curve.index, 0, equity_curve["underwater"], facecolor="red"
         )
         ax2.set_title("Underwater Curve")
 
         # Plot rolling return volatility
         ax3 = fig.add_subplot(gs[4:6, :], sharex=ax1)
-        ax3.plot(self.equity_curve.index, self.equity_curve["rolling 25N volatility"])
+        ax3.plot(equity_curve.index, equity_curve["rolling 25N volatility"])
         ax3.set_title("rolling 25N volatility")
 
         plt.tight_layout()
