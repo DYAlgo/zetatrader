@@ -204,6 +204,44 @@ class TradingStats:
 
         return (holdings_data, portfolio_metrics)
 
+    def sort_trade_by_trade(self, trade_log):
+        """Returns a dictionary of trade-by-trade data for each symbol. Currently
+        only works for single entry and exit trading strategies.
+
+        Returns:
+            [dict]: Symbol as dict keys and trade-by-trade dataframe as value
+        """
+        instruments = list(trade_log["symbol"].unique())
+        trade_log.set_index(["symbol"], inplace=True)
+
+        # Analyze the trade by trade performance
+        trade_history = {}
+        for symbol in instruments:
+            trade_by_trade = []
+            cur_trade = {}
+            in_trade = False
+            for i in range(len(trade_log.loc[symbol])):
+                if in_trade:
+                    cur_trade["exit_date"] = trade_log["timestamp"].loc[symbol].iloc[i]
+                    cur_trade["exit_price"] = trade_log["price"].loc[symbol].iloc[i]
+                    trade_by_trade.append(cur_trade)
+                    in_trade = False
+                elif in_trade == False:
+                    cur_trade = {}
+                    cur_trade["entry_date"] = trade_log["timestamp"].loc[symbol].iloc[i]
+                    cur_trade["symbol"] = symbol
+                    cur_trade["direction"] = trade_log["direction"].loc[symbol].iloc[i]
+                    cur_trade["size"] = trade_log["quantity"].loc[symbol].iloc[i]
+                    cur_trade["entry_price"] = trade_log["price"].loc[symbol].iloc[i]
+                    in_trade = True
+            trade_df = pd.DataFrame(trade_by_trade)
+            trade_df["PnL"] = (
+                trade_df["exit_price"] - trade_df["entry_price"]
+            ) * np.where(trade_df["direction"] == "BUY", 1, -1)
+            trade_df["PnL %"] = trade_df["PnL"] / trade_df["entry_price"]
+            trade_history[symbol] = trade_df
+        return trade_history
+
     # ========================
     # SAVE PERFORMANCE STATS
     # ========================
@@ -298,7 +336,7 @@ class TradingStats:
         return round(100 * abs(min(underwater_ts.dropna())), 4)
 
     def calculate_mar(self, total_return, max_drawdown):
-        return round(total_return / max_drawdown)
+        return round(total_return / max_drawdown, 4)
 
     def calculate_gain_to_pain(self, equity_ts, underwater_ts):
         equity_ts = equity_ts.dropna()
@@ -311,4 +349,4 @@ class TradingStats:
         return round(kurtosis(return_ts.dropna()), 3)
 
     def calculate_sortino_ratio(self, return_ts):
-        return round(return_ts.mean() / return_ts[return_ts < 0].std(), 4)
+        return round(100 * (return_ts.mean() / return_ts[return_ts < 0].std()), 4)
