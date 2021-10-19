@@ -2,20 +2,22 @@
 # -*- coding: utf-8 -*-
 
 # event.py
-# Darren Jun Yi Yeap V0.1
+# Darren
+
 
 class Event(object):
     """
-    Event is base class providing an interface for all subsequent 
-    (inherited) events, that will trigger further events in the 
-    trading infrastructure.   
+    Event is base class providing an interface for all subsequent
+    (inherited) events, that will trigger further events in the
+    trading infrastructure.
     """
+
     pass
 
 
 class MarketEvent(Event):
     """
-    Handles the event of receiving a new market update with 
+    Handles the event of receiving a new market update with
     corresponding bars.
     """
 
@@ -23,7 +25,7 @@ class MarketEvent(Event):
         """
         Initialises the MarketEvent.
         """
-        self.type = 'MARKET'
+        self.type = "MARKET"
 
 
 class CloseEvent(Event):
@@ -36,7 +38,7 @@ class CloseEvent(Event):
         """
         Initialises the CloseEvent.
         """
-        self.type = 'CLOSE'
+        self.type = "CLOSE"
 
 
 class SignalEvent(Event):
@@ -44,26 +46,32 @@ class SignalEvent(Event):
     Handles the event of sending a Signal from a Strategy object.
     This is received by a Portfolio object and acted upon.
     """
-    
-    def __init__(self, strategy_id, symbol, datetime, signal_type, strength
-        , money_management_key = 0 
+
+    def __init__(
+        self,
+        strategy_id,
+        symbol,
+        datetime,
+        signal_type,
+        strength,
+        money_management_key=0,
     ):
         """Initializes the SignalEvent.
-        
+
         Arguments:
             strategy_id {int,str} -- The unique ID of the strategy used.
             symbol {int,str} -- The ticker symbol
             datetime {datetime} -- Timestamp at which the signal was generated
             signal_type {str} -- 'LONG' or 'SHORT'.
             strength {float} -- An adjustment factor "suggestion" used to scale
-                quantity at the portfolio level. Useful for pairs strategies. 
-        
+                quantity at the portfolio level. Useful for pairs strategies.
+
         Keyword Arguments:
             money_management_key {int} -- Unique key used by money_management
                 object to use specific position sizing method (default: {1})
         """
         self.strategy_id = strategy_id
-        self.type = 'SIGNAL'
+        self.type = "SIGNAL"
         self.symbol = symbol
         self.datetime = datetime
         self.signal_type = signal_type
@@ -85,7 +93,7 @@ class OrderEvent(Event):
         a quantity (integral) and its direction ('BUY' or
         'SELL').
 
-        TODO: Must handle error checking here to obtain 
+        TODO: Must handle error checking here to obtain
         rational orders (i.e. no negative quantities etc).
 
         Parameters:
@@ -94,7 +102,7 @@ class OrderEvent(Event):
         quantity - Non-negative integer for quantity.
         direction - 'BUY' or 'SELL' for long or short.
         """
-        self.type = 'ORDER'
+        self.type = "ORDER"
         self.symbol = symbol
         self.order_type = order_type
         self.quantity = quantity
@@ -107,8 +115,8 @@ class OrderEvent(Event):
         Outputs the values within the Order.
         """
         print(
-            "Order: Symbol=%s, Type=%s, Quantity=%s, Direction=%s" % 
-            (self.symbol, self.order_type, self.quantity, self.direction)
+            "Order: Symbol=%s, Type=%s, Quantity=%s, Direction=%s"
+            % (self.symbol, self.order_type, self.quantity, self.direction)
         )
 
 
@@ -118,17 +126,26 @@ class FillEvent(Event):
     from a brokerage. Stores the quantity of an instrument
     actually filled and at what price. In addition, stores
     the commission of the trade from the brokerage.
-    
+
     TODO: Currently does not support filling positions at
     different prices. This will be simulated by averaging
     the cost.
     """
 
-    def __init__(self, timeindex, symbol, exchange, quantity, 
-                 direction, fill_cost, commission=0, lot_id=0):
+    def __init__(
+        self,
+        timeindex,
+        symbol,
+        exchange,
+        quantity,
+        direction,
+        fill_cost,
+        commission=0,
+        lot_id=0,
+    ):
         """
         Initialises the FillEvent object. Sets the symbol, exchange,
-        quantity, direction, cost of fill and an optional 
+        quantity, direction, cost of fill and an optional
         commission.
 
         If commission is not provided, the Fill object will
@@ -144,7 +161,7 @@ class FillEvent(Event):
         fill_cost - The holdings value in dollars. (Non-negative)
         commission - An optional commission sent from IB.
         """
-        self.type = 'FILL'
+        self.type = "FILL"
         self.timeindex = timeindex
         self.symbol = symbol
         self.exchange = exchange
@@ -172,6 +189,6 @@ class FillEvent(Event):
         full_cost = 5.00
         if self.quantity <= 500:
             full_cost = max(1.3, 0.013 * self.quantity)
-        else: # Greater than 500
+        else:  # Greater than 500
             full_cost = max(1.3, 0.008 * self.quantity)
         return full_cost

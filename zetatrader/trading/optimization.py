@@ -65,6 +65,8 @@ class Optimization:
             output_path=self.output_path,
             backtest_parameters=self.backtest_parameters,
             strategy_parameters=strat_param,
+            verbose=False,
+            save_results=False
         )
 
         return backtest.start_trading()
@@ -75,6 +77,6 @@ class Optimization:
 
         for sp in param_combinations:
             print(f"Backtesting with parameters: {sp}")
-            _, _, portfolio_metrics = self._run_backtest_instance(sp)
+            _, _, portfolio_metrics, _ = self._run_backtest_instance(sp)
             optimization_performance.append({**sp, **portfolio_metrics})
         return pd.DataFrame(optimization_performance)

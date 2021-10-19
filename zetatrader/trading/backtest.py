@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 # # -*- coding: utf-8 -*-
-import pandas as pd
-import datetime as dt
+import logging
+import os
 
 try:
     import Queue as queue
 except ImportError:
     import queue
+
+log = logging.getLogger(__name__)
+logging.basicConfig(
+    filemode="w",
+    level=logging.INFO,
+    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)), "backtest.log"),
+)
 
 
 class TradingSession(object):
@@ -29,6 +36,8 @@ class TradingSession(object):
         output_path=None,
         backtest_parameters={},
         strategy_parameters={},
+        verbose=True,
+        save_results=True,
     ):
         """Initialize the class object.
 
@@ -69,6 +78,8 @@ class TradingSession(object):
         self.output_path = output_path
         self.backtest_parameters = backtest_parameters
         self.strategy_parameters = strategy_parameters
+        self.verbose = verbose
+        self.save_results = save_results
 
         self.signals = 0
         self.orders = 0
@@ -82,23 +93,13 @@ class TradingSession(object):
         their class types. It must follow the sequence
         starting from initializing price handler to execution handler
         """
-        if self.backtest_parameters.get("price_handler_param") == None:
-            # TODO: Add logging here
-            self.price_handler = self.price_handler(
-                events=self.events,
-                symbol_dict=self.symbol_dict,
-                start_dt=self.session_start_dt,
-                end_dt=self.session_end_dt,
-            )
-        else:
-            # TODO: Add logging here
-            self.price_handler = self.price_handler(
-                events=self.events,
-                symbol_dict=self.symbol_dict,
-                start_dt=self.session_start_dt,
-                end_dt=self.session_end_dt,
-                **self.backtest_parameters.get("price_handler_param")
-            )
+        self.price_handler = self.price_handler(
+            events=self.events,
+            symbol_dict=self.symbol_dict,
+            start_dt=self.session_start_dt,
+            end_dt=self.session_end_dt,
+            **self.backtest_parameters.get("price_handler_param", {})
+        )
 
         # INITIALIZE STRATEGY CLASS
         self.strategy = self.strategy(
@@ -129,13 +130,14 @@ class TradingSession(object):
             **self.backtest_parameters.get("execution_parameters", {})
         )
 
-        print(
-            "Initializing objects...\n",
-            "Data Handler: %s \n" % self.price_handler,
-            "Strategy %s \n" % self.strategy,
-            "Portfolio %s \n" % self.portfolio,
-            "Execution Handler %s \n" % self.execution_handler,
-        )
+        if self.verbose:
+            print(
+                "Initializing objects...\n",
+                "Data Handler: %s \n" % self.price_handler,
+                "Strategy %s \n" % self.strategy,
+                "Portfolio %s \n" % self.portfolio,
+                "Execution Handler %s \n" % self.execution_handler,
+            )
 
     def _continue_session_loop(self):
         """Determines when to end trading session loop"""
@@ -187,18 +189,22 @@ class TradingSession(object):
             equity_curve,
             portfolio_metrics,
         ) = self.performance.calculate_portfolio_performance(equity_curve)
-        print(portfolio_metrics)
+        if self.verbose:
+            print(portfolio_metrics)
 
         # Analyze and Store trade data
         trade_data = self.portfolio.get_trade_log()
-        self.performance.save_equity_curve(equity_curve)
-        self.performance.save_trade_log(trade_data)
+        trade_statistics = self.performance.sort_trade_by_trade(trade_data)
+        if self.save_results:
+            self.performance.save_equity_curve(equity_curve)
+            self.performance.save_trade_log(trade_data)
 
-        return (equity_curve, trade_data, portfolio_metrics)
+        return (equity_curve, trade_data, portfolio_metrics, trade_statistics)
 
     def start_trading(self):
         """
         Starts the live or backtest algo and outputs strategy performance.
         """
         self._run_session()
+        log.info("Backtest completed without error")
         return self._output_performance()

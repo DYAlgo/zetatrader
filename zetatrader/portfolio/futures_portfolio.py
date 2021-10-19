@@ -10,7 +10,8 @@ from zetatrader.portfolio.simulated_portfolio import AbstractPortfolio
 class FuturesPortfolio(AbstractPortfolio):
     """A simulation portfolio for futures and CFDs."""
 
-    def __init__(self, bars, events, performance, initial_capital, symbol_info):
+    def __init__(self, bars, events, performance, initial_capital, symbol_info, currency='USD'):
+        self.currency = currency
         self.bars = bars
         self.symbol_list = self.bars.symbol_list
         self.events = events
@@ -31,7 +32,11 @@ class FuturesPortfolio(AbstractPortfolio):
             "naive_order": self.naive_order,
             "percent_total_equity_order": self.percent_total_equity_order,
             "percent_equity_risk": self.percent_equity_risk_order,
+            "fixed_fractional_risk": self.percent_equity_risk_order,
         }
+
+    def __str__(self):
+        return "Simulated Futures Portfolio"
 
     # ==================================================== #
     # Portfolio Constructors
@@ -143,8 +148,14 @@ class FuturesPortfolio(AbstractPortfolio):
         for symbol in self.symbol_list:
             volume = self.current_positions[symbol]
             last_price = self.bars.get_latest_bar_value(symbol, "close_price")
-            if np.isnan(last_price):
+
+            # Set last price to 0 if no data is available
+            if np.isnan(last_price) and self.symbol_info[symbol].get("Invquote", None) == True:
                 last_price = 0
+            elif self.symbol_info[symbol].get("Invquote", None) == True:
+                # Inverse close price
+                last_price = 1/last_price
+
             contract_size = self.symbol_info[symbol]["contract size"]
             # exposure = 1 if volume > 0 else (-1 if volume < 0 else 0)
             notional_value = contract_size * last_price * volume
@@ -247,6 +258,10 @@ class FuturesPortfolio(AbstractPortfolio):
         symbol = fill.symbol
         contract_size = self.symbol_info[symbol]["contract size"]
         fill_cost = fill.fill_cost
+        if self.symbol_info[symbol].get("Invquote", None) == True:
+                # Inverse close price
+                fill_cost = 1/fill_cost
+
         cost = fill_dir * fill_cost * fill.quantity * contract_size
         self.current_holdings[fill.symbol] += cost
         self.current_holdings["commission"] += fill.commission
@@ -255,10 +270,10 @@ class FuturesPortfolio(AbstractPortfolio):
         self.current_holdings["total"] -= fill.commission
         self.current_holdings["total_notional"] -= cost
 
-        print(
-            f"{fill.direction} {fill.quantity} units of {fill.symbol}"
-            + f" Order Filled on {self.bars.get_datetime()} at {fill_cost}"
-        )
+        # print(
+        #     f"{fill.direction} {fill.quantity} units of {fill.symbol}"
+        #     + f" Order Filled on {self.bars.get_datetime()} at {fill_cost}"
+        # )
 
     def update_trade_log_from_fill(self, fill):
         """Adds a record of order filled to trade log.
@@ -356,6 +371,11 @@ class FuturesPortfolio(AbstractPortfolio):
         direction = signal.signal_type
         lot_size = self.symbol_info[symbol]["lotMin"]
         close = self.bars.get_latest_bar_value(symbol=symbol, val_type="close_price")
+
+        if self.symbol_info[symbol].get("Invquote", None) == True:
+            # Inverse close price
+            close = 1/close
+
         contract_value = close * self.symbol_info[symbol]["contract size"]
         qty = (self.total_equity * signal.strength) / contract_value
         qty = self.round_down(qty, lot_size=lot_size)
@@ -397,6 +417,9 @@ class FuturesPortfolio(AbstractPortfolio):
         portfolio_risk = self.total_equity * signal.strength["percent_equity"]
         lot_size = self.symbol_info[symbol]["lotMin"]
         contract_risk = abs(total_ticks) * tick_value
+        if self.symbol_info[symbol].get("Invquote", None) == True:
+            # Inverse close price
+            contract_risk = 1/contract_risk
         target_qty = portfolio_risk / contract_risk
         target_qty = self.round_down(target_qty, lot_size=lot_size)
 
